@@ -3,15 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/aereal/merge-chance-time/app/web"
+	"github.com/dgrijalva/jwt-go"
 	"go.opencensus.io/plugin/ochttp"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
@@ -61,7 +64,22 @@ func run() error {
 		return fmt.Errorf("GOOGLE_CLOUD_PROJECT must be defined")
 	}
 
-	w := web.New(onGAE, projectID)
+	keyFileName := "./github-app.private-key.pem"
+	key, err := ioutil.ReadFile(keyFileName)
+	if err != nil {
+		return fmt.Errorf("cannot open file (%s): %w", keyFileName, err)
+	}
+	privKey, err := jwt.ParseRSAPrivateKeyFromPEM(key)
+	if err != nil {
+		return fmt.Errorf("cannot parse PEM: %w", err)
+	}
+
+	githubAppID, err := strconv.Atoi(os.Getenv("GITHUB_APP_IDENTIFIER"))
+	if err != nil {
+		return fmt.Errorf("GITHUB_APP_IDENTIFIER must be valid int")
+	}
+
+	w := web.New(onGAE, projectID, githubAppID, privKey, httpClient)
 	server := w.Server(port)
 	go graceful(ctx, server, 5*time.Second)
 
