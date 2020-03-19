@@ -12,6 +12,8 @@ import (
 
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/aereal/merge-chance-time/app/web"
+	"go.opencensus.io/plugin/ochttp"
+	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
 )
 
@@ -39,6 +41,7 @@ func run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	httpClient := http.DefaultClient
 	if onGAE {
 		exporter, err := stackdriver.NewExporter(stackdriver.Options{Context: ctx})
 		if err != nil {
@@ -46,6 +49,11 @@ func run() error {
 		}
 		defer exporter.Flush()
 		trace.RegisterExporter(exporter)
+
+		if err := view.Register(ochttp.ClientSentBytesDistribution, ochttp.ClientReceivedBytesDistribution, ochttp.ClientLatencyView, ochttp.ClientCompletedCount, ochttp.ClientRoundtripLatencyDistribution); err != nil {
+			return err
+		}
+		httpClient.Transport = &ochttp.Transport{}
 	}
 
 	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
