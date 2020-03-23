@@ -97,7 +97,7 @@ func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	case *github.PullRequestEvent:
 		c.onPullRequest(w, r, p)
 	default:
-		fmt.Fprintln(w, "OK")
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -107,7 +107,7 @@ func (c *Web) onPullRequest(w http.ResponseWriter, r *http.Request, payload *git
 	action := payload.GetAction()
 	if action != "opened" && action != "synchronize" {
 		logger.Warnf("Received action is %q skipping", action)
-		fmt.Fprintln(w, "OK")
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	ctx := r.Context()
@@ -130,7 +130,7 @@ func (c *Web) onPullRequest(w http.ResponseWriter, r *http.Request, payload *git
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintln(w, "OK")
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (c *Web) onInstallationRepositoriesEvent(w http.ResponseWriter, r *http.Request, payload *github.InstallationRepositoriesEvent) {
@@ -170,7 +170,7 @@ func (c *Web) onInstallationRepositoriesEvent(w http.ResponseWriter, r *http.Req
 	b, _ := ioutil.ReadAll(resp.Body)
 	logger.Infof("response body = %s", string(b))
 
-	fmt.Fprintln(w, "OK")
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (c *Web) createAppClient() *github.Client {
