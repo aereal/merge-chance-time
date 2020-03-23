@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
+	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dimfeld/httptreemux/v5"
 	"github.com/google/go-github/v30/github"
@@ -92,9 +94,43 @@ func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	switch p := payload.(type) {
 	case *github.InstallationRepositoriesEvent:
 		c.onInstallationRepositoriesEvent(w, r, p)
+	case *github.PullRequestEvent:
+		c.onPullRequest(w, r, p)
 	default:
 		fmt.Fprintln(w, "OK")
 	}
+}
+
+func (c *Web) onPullRequest(w http.ResponseWriter, r *http.Request, payload *github.PullRequestEvent) {
+	logger := ctxlog.RequestContextLogger(r)
+	logger.Infof("Pull Request Event: %#v", payload)
+	action := payload.GetAction()
+	if action != "opened" && action != "synchronize" {
+		logger.Warnf("Received action is %q skipping", action)
+		fmt.Fprintln(w, "OK")
+		return
+	}
+	ctx := r.Context()
+	ghClient := c.createInstallationClient(payload.Installation)
+	after := payload.GetAfter()
+	logger.Infof("after commit = %q", after)
+	fullName := payload.GetRepo().GetFullName()
+	names := strings.Split(fullName, "/")
+	if len(names) < 2 {
+		http.Error(w, fmt.Sprintf("invalid repo.fullName: %q", fullName), http.StatusBadRequest)
+		return
+	}
+	_, _, err := ghClient.Repositories.CreateStatus(ctx, names[0], names[1], after, &github.RepoStatus{
+		State:   github.String("success"),
+		Context: github.String("merge-chance-time"),
+	})
+	if err != nil {
+		err = fmt.Errorf("failed to create status: %w", err)
+		logger.Error(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprintln(w, "OK")
 }
 
 func (c *Web) onInstallationRepositoriesEvent(w http.ResponseWriter, r *http.Request, payload *github.InstallationRepositoriesEvent) {
@@ -135,4 +171,15 @@ func (c *Web) onInstallationRepositoriesEvent(w http.ResponseWriter, r *http.Req
 	logger.Infof("response body = %s", string(b))
 
 	fmt.Fprintln(w, "OK")
+}
+
+func (c *Web) createAppClient() *github.Client {
+	tr := ghinstallation.NewAppsTransportFromPrivateKey(c.httpClient.Transport, int64(c.githubAppID), c.githubAppPrivateKey)
+	return github.NewClient(&http.Client{Transport: tr})
+}
+
+func (c *Web) createInstallationClient(inst *github.Installation) *github.Client {
+	atr := ghinstallation.NewAppsTransportFromPrivateKey(c.httpClient.Transport, int64(c.githubAppID), c.githubAppPrivateKey)
+	itr := ghinstallation.NewFromAppsTransport(atr, inst.GetID())
+	return github.NewClient(&http.Client{Transport: itr})
 }
