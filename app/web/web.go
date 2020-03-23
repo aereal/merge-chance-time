@@ -78,7 +78,7 @@ func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	logger.Info("webhook payload = %#v", payload)
+	logger.Infof("webhook payload = %#v", payload)
 
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, "https://api.github.com/app", nil)
 	if err != nil {
