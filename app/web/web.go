@@ -15,11 +15,12 @@ import (
 	"go.opencensus.io/plugin/ochttp"
 )
 
-func New(onGAE bool, projectID string, githubAppID int, githubAppPrivateKey *rsa.PrivateKey, httpClient *http.Client) *Web {
+func New(onGAE bool, projectID string, githubAppID int, githubWebhookSecret []byte, githubAppPrivateKey *rsa.PrivateKey, httpClient *http.Client) *Web {
 	return &Web{
 		onGAE:               onGAE,
 		projectID:           projectID,
 		githubAppID:         githubAppID,
+		githubWebhookSecret: githubWebhookSecret,
 		githubAppPrivateKey: githubAppPrivateKey,
 		httpClient:          httpClient,
 	}
@@ -29,6 +30,7 @@ type Web struct {
 	onGAE               bool
 	projectID           string
 	githubAppID         int
+	githubWebhookSecret []byte
 	githubAppPrivateKey *rsa.PrivateKey
 	httpClient          *http.Client
 }
@@ -67,11 +69,18 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
-	// TODO: securing webhook https://developer.github.com/webhooks/securing/
-	read, _ := ioutil.ReadAll(r.Body)
 	logger := ctxlog.RequestContextLogger(r)
-	logger.Infof("webhook request body = %s", string(read))
-	payload, err := github.ParseWebHook(github.WebHookType(r), read)
+
+	payloadBytes, err := github.ValidatePayload(r, c.githubWebhookSecret)
+	if err != nil {
+		err = fmt.Errorf("failed to validate incoming payload: %w", err)
+		logger.Error(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	logger.Infof("webhook request body = %s", string(payloadBytes))
+	payload, err := github.ParseWebHook(github.WebHookType(r), payloadBytes)
 	if err != nil {
 		err = fmt.Errorf("failed to parse incoming payload: %w", err)
 		logger.Error(err)
@@ -79,6 +88,17 @@ func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logger.Infof("webhook payload = %#v", payload)
+
+	switch p := payload.(type) {
+	case *github.InstallationRepositoriesEvent:
+		c.onInstallationRepositoriesEvent(w, r, p)
+	default:
+		fmt.Fprintln(w, "OK")
+	}
+}
+
+func (c *Web) onInstallationRepositoriesEvent(w http.ResponseWriter, r *http.Request, payload *github.InstallationRepositoriesEvent) {
+	logger := ctxlog.RequestContextLogger(r)
 
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, "https://api.github.com/app", nil)
 	if err != nil {

@@ -79,7 +79,12 @@ func run() error {
 		return fmt.Errorf("GITHUB_APP_IDENTIFIER must be valid int")
 	}
 
-	w := web.New(onGAE, projectID, githubAppID, privKey, httpClient)
+	githubWebhookSecret := os.Getenv("GITHUB_WEBHOOK_SECRET")
+	if githubWebhookSecret == "" {
+		log.Printf("warning: GITHUB_WEBHOOK_SECRET is empty")
+	}
+
+	w := web.New(onGAE, projectID, githubAppID, []byte(githubWebhookSecret), privKey, httpClient)
 	server := w.Server(port)
 	go graceful(ctx, server, 5*time.Second)
 
