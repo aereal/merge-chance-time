@@ -12,5 +12,4 @@ require (
 	github.com/yfuruyama/stackdriver-request-context-log v0.0.1
 	go.opencensus.io v0.22.3
 	golang.org/x/crypto v0.0.0-20200320181102-891825fb96df // indirect
-	google.golang.org/api v0.10.0
 )
