@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"contrib.go.opencensus.io/exporter/stackdriver"
+	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
 	"github.com/aereal/merge-chance-time/app/web"
 	"github.com/dgrijalva/jwt-go"
 	"go.opencensus.io/plugin/ochttp"
@@ -84,7 +85,9 @@ func run() error {
 		log.Printf("warning: GITHUB_WEBHOOK_SECRET is empty")
 	}
 
-	w := web.New(onGAE, projectID, githubAppID, []byte(githubWebhookSecret), privKey, httpClient)
+	ghAdapter := githubapps.New(int64(githubAppID), privKey, httpClient.Transport)
+
+	w := web.New(onGAE, projectID, ghAdapter, []byte(githubWebhookSecret))
 	server := w.Server(port)
 	go graceful(ctx, server, 5*time.Second)
 

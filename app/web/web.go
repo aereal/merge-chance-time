@@ -1,37 +1,32 @@
 package web
 
 import (
-	"crypto/rsa"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
-	"github.com/bradleyfalzon/ghinstallation"
+	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
 	"github.com/dimfeld/httptreemux/v5"
 	"github.com/google/go-github/v30/github"
 	ctxlog "github.com/yfuruyama/stackdriver-request-context-log"
 	"go.opencensus.io/plugin/ochttp"
 )
 
-func New(onGAE bool, projectID string, githubAppID int, githubWebhookSecret []byte, githubAppPrivateKey *rsa.PrivateKey, httpClient *http.Client) *Web {
+func New(onGAE bool, projectID string, ghAdapter *githubapps.GitHubAppsAdapter, githubWebhookSecret []byte) *Web {
 	return &Web{
 		onGAE:               onGAE,
 		projectID:           projectID,
-		githubAppID:         githubAppID,
 		githubWebhookSecret: githubWebhookSecret,
-		githubAppPrivateKey: githubAppPrivateKey,
-		httpClient:          httpClient,
+		ghAdapter:           ghAdapter,
 	}
 }
 
 type Web struct {
 	onGAE               bool
 	projectID           string
-	githubAppID         int
+	ghAdapter           *githubapps.GitHubAppsAdapter
 	githubWebhookSecret []byte
-	githubAppPrivateKey *rsa.PrivateKey
-	httpClient          *http.Client
 }
 
 func (w *Web) Server(port string) *http.Server {
@@ -106,7 +101,7 @@ func (c *Web) onPullRequest(w http.ResponseWriter, r *http.Request, payload *git
 		return
 	}
 	ctx := r.Context()
-	ghClient := c.createInstallationClient(payload.Installation)
+	ghClient := c.ghAdapter.NewInstallationClient(payload.Installation.GetID())
 	after := payload.GetAfter()
 	logger.Infof("after commit = %q", after)
 	fullName := payload.GetRepo().GetFullName()
@@ -126,10 +121,4 @@ func (c *Web) onPullRequest(w http.ResponseWriter, r *http.Request, payload *git
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func (c *Web) createInstallationClient(inst *github.Installation) *github.Client {
-	atr := ghinstallation.NewAppsTransportFromPrivateKey(c.httpClient.Transport, int64(c.githubAppID), c.githubAppPrivateKey)
-	itr := ghinstallation.NewFromAppsTransport(atr, inst.GetID())
-	return github.NewClient(&http.Client{Transport: itr})
 }
