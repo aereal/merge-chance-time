@@ -55,11 +55,20 @@ func (w *Web) handler() http.Handler {
 	handle := ctxlog.RequestLogging(cfg)
 	router.UsingContext().Handler(http.MethodGet, "/", handle(http.HandlerFunc(handleRoot)))
 	router.UsingContext().Handler(http.MethodPost, "/webhook", handle(http.HandlerFunc(w.handleWebhook)))
+	router.UsingContext().Handler(http.MethodGet, "/cron", handle(http.HandlerFunc(w.handleCron)))
 	return router
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
+}
+
+func (c *Web) handleCron(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("x-appengine-cron") != "true" {
+		http.Error(w, "invalid request", 400)
+		return
+	}
+	fmt.Fprintln(w, "OK cron")
 }
 
 func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
