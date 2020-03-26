@@ -27,7 +27,7 @@ resource "google_project_iam_binding" "github_actions_appengine_admin" {
 
 resource "google_project_iam_binding" "github_actions_cloud_build" {
   project = "merge-chance-time"
-  role    = "roles/cloudbuild.serviceAgent"
+  role    = "roles/cloudbuild.builds.builder"
   members = [
     "serviceAccount:${google_service_account.github_actions_service_account.email}"
   ]
