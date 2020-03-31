@@ -1,5 +1,7 @@
+variable "google_service_account" {}
+
 provider "google" {
-  credentials = file("service-account.json")
+  credentials = base64decode(var.google_service_account)
 
   project = "merge-chance-time"
   region  = "asia-northeast1"
