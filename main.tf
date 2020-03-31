@@ -50,7 +50,7 @@ resource "google_project_iam_binding" "cloud_build_service_account" {
 }
 
 resource "google_project_iam_custom_role" "github_actions_executor" {
-  role_id = "githubActionsExecutor"
+  role_id = "projects/${data.google_project.current.project_id}/roles/githubActionsExecutor"
   title   = "GitHub Actions Executor"
   permissions = [
     "appengine.applications.get",
