@@ -103,6 +103,15 @@ resource "google_pubsub_topic" "cron_topic" {
 }
 
 resource "google_pubsub_subscription" "cron_subscription" {
-  name = "cron-subscription"
+  name  = "cron-subscription"
   topic = google_pubsub_topic.cron_topic.name
+}
+
+resource "google_cloud_scheduler_job" "invoke_endpoint" {
+  name     = "invoke-endpoint"
+  schedule = "*/2 * * * *"
+  pubsub_target {
+    topic_name = google_pubsub_topic.cron_topic.id
+    data       = base64encode(jsonencode({ "from" = "cloud-scheduler" }))
+  }
 }
