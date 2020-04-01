@@ -62,5 +62,6 @@ resource "google_project_iam_custom_role" "github_actions_executor" {
     "appengine.versions.delete",
     "appengine.versions.list",
     "appengine.versions.update",
+    "storage.objects.list",
   ]
 }
