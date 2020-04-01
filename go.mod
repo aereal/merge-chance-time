@@ -3,7 +3,7 @@ module github.com/aereal/merge-chance-time
 go 1.14
 
 require (
-	contrib.go.opencensus.io/exporter/stackdriver v0.13.0
+	contrib.go.opencensus.io/exporter/stackdriver v0.13.1
 	github.com/bradleyfalzon/ghinstallation v1.1.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dimfeld/httptreemux/v5 v5.0.2
