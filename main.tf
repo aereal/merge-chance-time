@@ -97,3 +97,12 @@ resource "google_project_iam_custom_role" "github_actions_executor" {
     "storage.objects.update",
   ]
 }
+
+resource "google_pubsub_topic" "cron_topic" {
+  name = "cron"
+}
+
+resource "google_pubsub_subscription" "cron_subscription" {
+  name = "cron-subscription"
+  topic = google_pubsub_topic.cron_topic.name
+}
