@@ -46,6 +46,9 @@ func run() error {
 	defer cancel()
 
 	httpClient := http.DefaultClient
+	if httpClient.Transport == nil {
+		httpClient.Transport = http.DefaultTransport
+	}
 	if onGAE {
 		exporter, err := stackdriver.NewExporter(stackdriver.Options{Context: ctx})
 		if err != nil {
