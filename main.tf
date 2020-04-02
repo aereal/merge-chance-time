@@ -49,6 +49,14 @@ resource "google_project_iam_binding" "cloud_build_service_account" {
   ]
 }
 
+resource "google_project_iam_binding" "pubsub" {
+  project = data.google_project.current.project_id
+  role    = "roles/iam.serviceAccountTokenCreator"
+  members = [
+    "serviceAccount:service-${data.google_project.current.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+  ]
+}
+
 resource "google_project_iam_custom_role" "github_actions_executor" {
   role_id = "GithubActionsExecutor"
   title   = "GitHub Actions Executor"
@@ -105,6 +113,12 @@ resource "google_pubsub_topic" "start_chance_topic" {
 resource "google_pubsub_subscription" "start_chance_subscription" {
   name  = "start-chance"
   topic = google_pubsub_topic.start_chance_topic.name
+  push_config {
+    push_endpoint = "https://${google_app_engine_application.app.default_hostname}/cron"
+    oidc_token {
+      service_account_email = "${google_app_engine_application.app.id}@appspot.gserviceaccount.com"
+    }
+  }
 }
 
 resource "google_pubsub_topic" "stop_chance_topic" {
