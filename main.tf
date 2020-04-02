@@ -98,20 +98,38 @@ resource "google_project_iam_custom_role" "github_actions_executor" {
   ]
 }
 
-resource "google_pubsub_topic" "cron_topic" {
-  name = "cron"
+resource "google_pubsub_topic" "start_chance_topic" {
+  name = "start-chance"
 }
 
-resource "google_pubsub_subscription" "cron_subscription" {
-  name  = "cron-subscription"
-  topic = google_pubsub_topic.cron_topic.name
+resource "google_pubsub_subscription" "start_chance_subscription" {
+  name  = "start-chance"
+  topic = google_pubsub_topic.start_chance_topic.name
 }
 
-resource "google_cloud_scheduler_job" "invoke_endpoint" {
-  name     = "invoke-endpoint"
-  schedule = "*/2 * * * *"
+resource "google_pubsub_topic" "stop_chance_topic" {
+  name = "stop-chance"
+}
+
+resource "google_pubsub_subscription" "stop_chance_subscription" {
+  name  = "stop-chance"
+  topic = google_pubsub_topic.stop_chance_topic.name
+}
+
+resource "google_cloud_scheduler_job" "invoke_start" {
+  name     = "start-chance"
+  schedule = "0 * * * *"
   pubsub_target {
-    topic_name = google_pubsub_topic.cron_topic.id
-    data       = base64encode(jsonencode({ "from" = "cloud-scheduler" }))
+    topic_name = google_pubsub_topic.start_chance_topic.id
+    data       = base64encode(jsonencode({ "from" = "cloud-scheduler", operation = "start" }))
+  }
+}
+
+resource "google_cloud_scheduler_job" "invoke_stop" {
+  name     = "stop-chance"
+  schedule = "0 * * * *"
+  pubsub_target {
+    topic_name = google_pubsub_topic.stop_chance_topic.id
+    data       = base64encode(jsonencode({ "from" = "cloud-scheduler", operation = "stop" }))
   }
 }
