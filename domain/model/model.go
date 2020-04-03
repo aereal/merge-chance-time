@@ -6,10 +6,35 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
+type CronSchedule struct {
+	Repr string
+	Spec cron.Schedule
+}
+
+func (s *CronSchedule) Next(t time.Time) time.Time {
+	return s.Spec.Next(t)
+}
+
+func (s *CronSchedule) UnmarshalText(text []byte) error {
+	repr := string(text)
+	parsed, err := parser.Parse(repr)
+	if err != nil {
+		return err
+	}
+	*s = CronSchedule{
+		Spec: parsed,
+		Repr: repr,
+	}
+	return nil
+}
+
+func (s CronSchedule) MarshalText() ([]byte, error) {
+	return []byte(s.Repr), nil
+}
+
 type RepositoryConfig struct {
-	Schedule      string `json:"schedule"`
-	StartSchedule string `json:"startSchedule"`
-	StopSchedule  string `json:"stopSchedule"`
+	StartSchedule *CronSchedule `json:"startSchedule"`
+	StopSchedule  *CronSchedule `json:"stopSchedule"`
 }
 
 var (
@@ -27,12 +52,8 @@ func (c *RepositoryConfig) ShouldStopOn(previousTime time.Time) bool {
 	return timeHasCome(c.StopSchedule, previousTime)
 }
 
-func timeHasCome(schedule string, previousTime time.Time) bool {
-	s, err := parser.Parse(schedule)
-	if err != nil {
-		return false
-	}
+func timeHasCome(schedule *CronSchedule, previousTime time.Time) bool {
 	now := NowFunc().Round(baseDuration)
-	nextTime := s.Next(previousTime)
+	nextTime := schedule.Next(previousTime)
 	return nextTime.Equal(now)
 }
