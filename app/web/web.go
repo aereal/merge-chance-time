@@ -1,24 +1,32 @@
 package web
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"strings"
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
+	"github.com/aereal/merge-chance-time/domain/model"
+	"github.com/aereal/merge-chance-time/domain/repo"
+	"github.com/aereal/merge-chance-time/usecase"
 	"github.com/dimfeld/httptreemux/v5"
 	"github.com/google/go-github/v30/github"
 	ctxlog "github.com/yfuruyama/stackdriver-request-context-log"
 	"go.opencensus.io/plugin/ochttp"
 )
 
-func New(onGAE bool, projectID string, ghAdapter *githubapps.GitHubAppsAdapter, githubWebhookSecret []byte) *Web {
+func New(onGAE bool, projectID string, ghAdapter *githubapps.GitHubAppsAdapter, githubWebhookSecret []byte, repo *repo.Repository, uc *usecase.Usecase) *Web {
 	return &Web{
 		onGAE:               onGAE,
 		projectID:           projectID,
 		githubWebhookSecret: githubWebhookSecret,
 		ghAdapter:           ghAdapter,
+		repo:                repo,
+		usecase:             uc,
 	}
 }
 
@@ -27,6 +35,8 @@ type Web struct {
 	projectID           string
 	ghAdapter           *githubapps.GitHubAppsAdapter
 	githubWebhookSecret []byte
+	repo                *repo.Repository
+	usecase             *usecase.Usecase
 }
 
 func (w *Web) Server(port string) *http.Server {

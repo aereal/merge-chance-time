@@ -28,6 +28,12 @@ type Repository struct {
 	firestoreClient *firestore.Client
 }
 
+func (r *Repository) CreateRepositoryConfig(ctx context.Context, owner, name string, config *model.RepositoryConfig) error {
+	key := keyOf(owner, name)
+	_, err := r.firestoreClient.Collection("RepositoryConfig").Doc(key).Set(ctx, config)
+	return err
+}
+
 func (r *Repository) GetRepositoryConfig(ctx context.Context, owner, name string) (*model.RepositoryConfig, error) {
 	key := keyOf(owner, name)
 	snapshot, err := r.firestoreClient.Collection("RepositoryConfig").Doc(key).Get(ctx)
