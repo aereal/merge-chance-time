@@ -12,10 +12,10 @@ import (
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
 	"github.com/aereal/merge-chance-time/domain/model"
 	"github.com/aereal/merge-chance-time/domain/repo"
+	"github.com/aereal/merge-chance-time/logging"
 	"github.com/aereal/merge-chance-time/usecase"
 	"github.com/dimfeld/httptreemux/v5"
 	"github.com/google/go-github/v30/github"
-	ctxlog "github.com/yfuruyama/stackdriver-request-context-log"
 	"go.opencensus.io/plugin/ochttp"
 )
 
@@ -60,13 +60,11 @@ func (w *Web) Server(port string) *http.Server {
 }
 
 func (w *Web) handler() http.Handler {
-	cfg := ctxlog.NewConfig(w.projectID)
 	router := httptreemux.New()
-	handle := ctxlog.RequestLogging(cfg)
-	router.UsingContext().Handler(http.MethodGet, "/", handle(http.HandlerFunc(handleRoot)))
-	router.UsingContext().Handler(http.MethodPost, "/webhook", handle(http.HandlerFunc(w.handleWebhook)))
-	router.UsingContext().Handler(http.MethodGet, "/cron", handle(http.HandlerFunc(w.handleCron)))
-	return router
+	router.UsingContext().Handler(http.MethodGet, "/", http.HandlerFunc(handleRoot))
+	router.UsingContext().Handler(http.MethodPost, "/webhook", http.HandlerFunc(w.handleWebhook))
+	router.UsingContext().Handler(http.MethodGet, "/cron", http.HandlerFunc(w.handleCron))
+	return logging.WithLogger(w.projectID)(router)
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +80,8 @@ func (c *Web) handleCron(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
-	logger := ctxlog.RequestContextLogger(r)
+	ctx := r.Context()
+	logger := logging.GetLogger(ctx)
 
 	payloadBytes, err := github.ValidatePayload(r, c.githubWebhookSecret)
 	if err != nil {
@@ -111,7 +110,8 @@ func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Web) onPullRequest(w http.ResponseWriter, r *http.Request, payload *github.PullRequestEvent) {
-	logger := ctxlog.RequestContextLogger(r)
+	ctx := r.Context()
+	logger := logging.GetLogger(ctx)
 	logger.Infof("Pull Request Event: %#v", payload)
 	action := payload.GetAction()
 	if action != "opened" && action != "synchronize" {
@@ -119,7 +119,6 @@ func (c *Web) onPullRequest(w http.ResponseWriter, r *http.Request, payload *git
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	ctx := r.Context()
 	ghClient := c.ghAdapter.NewInstallationClient(payload.Installation.GetID())
 	after := payload.GetAfter()
 	logger.Infof("after commit = %q", after)
