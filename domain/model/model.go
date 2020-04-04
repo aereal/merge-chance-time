@@ -15,6 +15,10 @@ func (s *CronSchedule) Next(t time.Time) time.Time {
 	return s.Spec.Next(t)
 }
 
+func (s *CronSchedule) String() string {
+	return s.Repr
+}
+
 func (s *CronSchedule) UnmarshalText(text []byte) error {
 	repr := string(text)
 	parsed, err := parser.Parse(repr)
@@ -30,6 +34,17 @@ func (s *CronSchedule) UnmarshalText(text []byte) error {
 
 func (s CronSchedule) MarshalText() ([]byte, error) {
 	return []byte(s.Repr), nil
+}
+
+func NewRepositoryConfig(startScheduleRepr, stopScheduleRepr []byte) (*RepositoryConfig, error) {
+	cfg := &RepositoryConfig{}
+	if err := cfg.StartSchedule.UnmarshalText(startScheduleRepr); err != nil {
+		return nil, err
+	}
+	if err := cfg.StopSchedule.UnmarshalText(stopScheduleRepr); err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }
 
 type RepositoryConfig struct {

@@ -30,28 +30,45 @@ type Repository struct {
 
 func (r *Repository) CreateRepositoryConfig(ctx context.Context, owner, name string, config *model.RepositoryConfig) error {
 	key := keyOf(owner, name)
-	_, err := r.firestoreClient.Collection("RepositoryConfig").Doc(key).Set(ctx, config)
+	dto := &dtoRepositoryConfig{
+		StartSchedule: config.StartSchedule.String(),
+		StopSchedule:  config.StopSchedule.String(),
+	}
+	_, err := r.repositoryConfigs().Doc(key).Set(ctx, dto)
 	return err
 }
 
 func (r *Repository) GetRepositoryConfig(ctx context.Context, owner, name string) (*model.RepositoryConfig, error) {
 	key := keyOf(owner, name)
-	snapshot, err := r.firestoreClient.Collection("RepositoryConfig").Doc(key).Get(ctx)
+	snapshot, err := r.repositoryConfigs().Doc(key).Get(ctx)
 	if status.Code(err) == codes.NotFound {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch RepositoryConfig: %w", err)
 	}
-	var cfg model.RepositoryConfig
-	if err := snapshot.DataTo(&cfg); err != nil {
+	var dto dtoRepositoryConfig
+	if err := snapshot.DataTo(&dto); err != nil {
 		return nil, fmt.Errorf("failed to convert fetched data to RepositoryConfig: %w", err)
 	}
-	return &cfg, nil
+	return dto.ToModel()
+}
+
+func (r *Repository) repositoryConfigs() *firestore.CollectionRef {
+	return r.firestoreClient.Collection("RepositoryConfig")
 }
 
 func keyOf(owner, name string) string {
 	fullName := fmt.Sprintf("%s/%s", owner, name)
 	sum := sha256.Sum256([]byte(fullName))
 	return fmt.Sprintf("%x", sum)
+}
+
+type dtoRepositoryConfig struct {
+	StartSchedule string
+	StopSchedule  string
+}
+
+func (d *dtoRepositoryConfig) ToModel() (*model.RepositoryConfig, error) {
+	return model.NewRepositoryConfig([]byte(d.StartSchedule), []byte(d.StopSchedule))
 }
