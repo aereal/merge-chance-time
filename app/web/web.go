@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
 	"strings"
+	"time"
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
@@ -63,7 +63,7 @@ func (w *Web) handler() http.Handler {
 	router := httptreemux.New()
 	router.UsingContext().Handler(http.MethodGet, "/", http.HandlerFunc(handleRoot))
 	router.UsingContext().Handler(http.MethodPost, "/webhook", http.HandlerFunc(w.handleWebhook))
-	router.UsingContext().Handler(http.MethodGet, "/cron", http.HandlerFunc(w.handleCron))
+	router.UsingContext().Handler(http.MethodPost, "/cron", w.handleCron())
 	return logging.WithLogger(w.projectID)(router)
 }
 
@@ -71,12 +71,35 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
 }
 
-func (c *Web) handleCron(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("x-appengine-cron") != "true" {
-		http.Error(w, "invalid request", 400)
-		return
-	}
-	fmt.Fprintln(w, "OK cron")
+func (c *Web) handleCron() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		logger := logging.GetLogger(ctx)
+
+		logger.Infof("headers = %#v", r.Header)
+
+		var payload PubSubPayload
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			logger.Warnf("cannot read request: %s", err)
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "cannot read request: %+v\n", err)
+			return
+		}
+
+		logger.Infof("payload.subscription=%q payload.message.id=%q publishTime=%q data=%q", payload.Subscription, payload.Message.ID, payload.Message.PublishTime, string(payload.Message.Data))
+
+		baseTime := time.Time(payload.Message.PublishTime).Round(time.Minute)
+		notice, err := c.usecase.NotifyEvent(ctx, baseTime)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("content-type", "application/json")
+			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
+			return
+		}
+
+		w.Header().Set("content-type", "application/json")
+		json.NewEncoder(w).Encode(notice)
+	})
 }
 
 func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {

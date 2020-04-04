@@ -56,3 +56,28 @@ func (u *Usecase) CreateRepositoryConfig(ctx context.Context, ghAppClient *githu
 
 	return nil
 }
+
+type Notification struct {
+	ReposToBeStarted []string
+	ReposToBeStopped []string
+}
+
+func (u *Usecase) NotifyEvent(ctx context.Context, baseTime time.Time) (*Notification, error) {
+	configs, err := u.repo.ListRepositoryConfigs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list repository config: %w", err)
+	}
+
+	notice := &Notification{ReposToBeStarted: []string{}, ReposToBeStopped: []string{}}
+	for _, cfg := range configs {
+		fullName := fmt.Sprintf("%s/%s", cfg.Owner, cfg.Name)
+		if cfg.ShouldStartOn(baseTime) {
+			notice.ReposToBeStarted = append(notice.ReposToBeStarted, fullName)
+		}
+		if cfg.ShouldStopOn(baseTime) {
+			notice.ReposToBeStopped = append(notice.ReposToBeStopped, fullName)
+		}
+	}
+
+	return notice, nil
+}
