@@ -38,7 +38,7 @@ func (s CronSchedule) MarshalText() ([]byte, error) {
 }
 
 func NewRepositoryConfig(startScheduleRepr, stopScheduleRepr []byte) (*RepositoryConfig, error) {
-	cfg := &RepositoryConfig{}
+	cfg := &RepositoryConfig{StartSchedule: &CronSchedule{}, StopSchedule: &CronSchedule{}}
 	if err := cfg.StartSchedule.UnmarshalText(startScheduleRepr); err != nil {
 		return nil, err
 	}
