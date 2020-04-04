@@ -64,7 +64,7 @@ func (w *Web) handler() http.Handler {
 	router.UsingContext().Handler(http.MethodGet, "/", http.HandlerFunc(handleRoot))
 	router.UsingContext().Handler(http.MethodPost, "/webhook", http.HandlerFunc(w.handleWebhook))
 	router.UsingContext().Handler(http.MethodPost, "/cron", w.handleCron())
-	return logging.WithLogger(w.projectID)(router)
+	return logging.WithLogger(w.projectID)(withDefaultHeaders(router))
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
