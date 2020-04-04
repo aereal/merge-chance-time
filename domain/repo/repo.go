@@ -7,6 +7,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/aereal/merge-chance-time/domain/model"
+	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -54,6 +55,30 @@ func (r *Repository) GetRepositoryConfig(ctx context.Context, owner, name string
 		return nil, fmt.Errorf("failed to convert fetched data to RepositoryConfig: %w", err)
 	}
 	return dto.ToModel()
+}
+
+func (r *Repository) ListRepositoryConfigs(ctx context.Context) ([]*model.RepositoryConfig, error) {
+	iter := r.repositoryConfigs().Documents(ctx)
+	configs := []*model.RepositoryConfig{}
+	for {
+		snapshot, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var dto dtoRepositoryConfig
+		if err := snapshot.DataTo(&dto); err != nil {
+			return nil, err
+		}
+		m, err := dto.ToModel()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert DTO to model: %w", err)
+		}
+		configs = append(configs, m)
+	}
+	return configs, nil
 }
 
 func (r *Repository) repositoryConfigs() *firestore.CollectionRef {
