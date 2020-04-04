@@ -2,7 +2,6 @@ package repo
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 
 	"cloud.google.com/go/firestore"
@@ -30,35 +29,54 @@ type Repository struct {
 }
 
 func (r *Repository) CreateRepositoryConfig(ctx context.Context, owner, name string, config *model.RepositoryConfig) error {
-	key := keyOf(owner, name)
 	dto := &dtoRepositoryConfig{
 		Owner:         config.Owner,
 		Name:          config.Name,
 		StartSchedule: config.StartSchedule.String(),
 		StopSchedule:  config.StopSchedule.String(),
 	}
-	_, err := r.repositoryConfigs().Doc(key).Set(ctx, dto)
+	batch := r.firestoreClient.Batch()
+	ownerRef := r.firestoreClient.Collection("InstallationTarget").Doc(owner)
+	repoRef := ownerRef.Collection("Repository").Doc(name)
+	batch.Set(ownerRef, map[string]interface{}{})
+	batch.Set(repoRef, dto)
+	_, err := batch.Commit(ctx)
 	return err
 }
 
 func (r *Repository) GetRepositoryConfig(ctx context.Context, owner, name string) (*model.RepositoryConfig, error) {
-	key := keyOf(owner, name)
-	snapshot, err := r.repositoryConfigs().Doc(key).Get(ctx)
+	snapshot, err := r.firestoreClient.Collection("InstallationTarget").Doc(owner).Collection("Repository").Doc(name).Get(ctx)
 	if status.Code(err) == codes.NotFound {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch RepositoryConfig: %w", err)
 	}
-	var dto dtoRepositoryConfig
-	if err := snapshot.DataTo(&dto); err != nil {
-		return nil, fmt.Errorf("failed to convert fetched data to RepositoryConfig: %w", err)
-	}
-	return dto.ToModel()
+	return repoFrom(snapshot)
 }
 
 func (r *Repository) ListRepositoryConfigs(ctx context.Context) ([]*model.RepositoryConfig, error) {
-	iter := r.repositoryConfigs().Documents(ctx)
+	ownerIter := r.firestoreClient.Collection("InstallationTarget").Documents(ctx)
+	configs := []*model.RepositoryConfig{}
+	for {
+		snapshot, err := ownerIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		repoIter := snapshot.Ref.Collection("Repository").Documents(ctx)
+		cfgs, err := fetchRepoConfigs(ctx, repoIter)
+		if err != nil {
+			return nil, err
+		}
+		configs = append(configs, cfgs...)
+	}
+	return configs, nil
+}
+
+func fetchRepoConfigs(ctx context.Context, iter *firestore.DocumentIterator) ([]*model.RepositoryConfig, error) {
 	configs := []*model.RepositoryConfig{}
 	for {
 		snapshot, err := iter.Next()
@@ -68,27 +86,25 @@ func (r *Repository) ListRepositoryConfigs(ctx context.Context) ([]*model.Reposi
 		if err != nil {
 			return nil, err
 		}
-		var dto dtoRepositoryConfig
-		if err := snapshot.DataTo(&dto); err != nil {
+		cfg, err := repoFrom(snapshot)
+		if err != nil {
 			return nil, err
 		}
-		m, err := dto.ToModel()
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert DTO to model: %w", err)
-		}
-		configs = append(configs, m)
+		configs = append(configs, cfg)
 	}
 	return configs, nil
 }
 
-func (r *Repository) repositoryConfigs() *firestore.CollectionRef {
-	return r.firestoreClient.Collection("RepositoryConfig")
-}
-
-func keyOf(owner, name string) string {
-	fullName := fmt.Sprintf("%s/%s", owner, name)
-	sum := sha256.Sum256([]byte(fullName))
-	return fmt.Sprintf("%x", sum)
+func repoFrom(snapshot *firestore.DocumentSnapshot) (*model.RepositoryConfig, error) {
+	var dto dtoRepositoryConfig
+	if err := snapshot.DataTo(&dto); err != nil {
+		return nil, err
+	}
+	m, err := dto.ToModel()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert DTO to model: %w", err)
+	}
+	return m, nil
 }
 
 type dtoRepositoryConfig struct {
