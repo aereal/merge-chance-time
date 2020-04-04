@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -48,8 +49,10 @@ func NewRepositoryConfig(startScheduleRepr, stopScheduleRepr []byte) (*Repositor
 }
 
 type RepositoryConfig struct {
-	StartSchedule *CronSchedule `json:"startSchedule"`
-	StopSchedule  *CronSchedule `json:"stopSchedule"`
+	Owner         string
+	Name          string
+	StartSchedule *CronSchedule
+	StopSchedule  *CronSchedule
 }
 
 var (
@@ -65,6 +68,16 @@ func (c *RepositoryConfig) ShouldStartOn(previousTime time.Time) bool {
 
 func (c *RepositoryConfig) ShouldStopOn(previousTime time.Time) bool {
 	return timeHasCome(c.StopSchedule, previousTime)
+}
+
+func (c *RepositoryConfig) Valid() error {
+	if c.Owner == "" {
+		return fmt.Errorf("Owner must not be empty")
+	}
+	if c.Name == "" {
+		return fmt.Errorf("Name must not be empty")
+	}
+	return nil
 }
 
 func timeHasCome(schedule *CronSchedule, previousTime time.Time) bool {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/aereal/merge-chance-time/domain/model"
 	"github.com/aereal/merge-chance-time/domain/repo"
@@ -33,6 +34,12 @@ func (u *Usecase) CreateRepositoryConfig(ctx context.Context, ghAppClient *githu
 	var cfg model.RepositoryConfig
 	if err := json.NewDecoder(input).Decode(&cfg); err != nil {
 		return fmt.Errorf("failed to decode input as JSON: %w", ErrInvalidInput)
+	}
+	cfg.Owner = owner
+	cfg.Name = name
+
+	if err := cfg.Valid(); err != nil {
+		return err
 	}
 
 	installation, _, err := ghAppClient.Apps.FindRepositoryInstallation(ctx, owner, name)

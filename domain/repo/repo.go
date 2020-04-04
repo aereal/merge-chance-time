@@ -31,6 +31,8 @@ type Repository struct {
 func (r *Repository) CreateRepositoryConfig(ctx context.Context, owner, name string, config *model.RepositoryConfig) error {
 	key := keyOf(owner, name)
 	dto := &dtoRepositoryConfig{
+		Owner:         config.Owner,
+		Name:          config.Name,
 		StartSchedule: config.StartSchedule.String(),
 		StopSchedule:  config.StopSchedule.String(),
 	}
@@ -65,10 +67,18 @@ func keyOf(owner, name string) string {
 }
 
 type dtoRepositoryConfig struct {
+	Owner         string
+	Name          string
 	StartSchedule string
 	StopSchedule  string
 }
 
 func (d *dtoRepositoryConfig) ToModel() (*model.RepositoryConfig, error) {
-	return model.NewRepositoryConfig([]byte(d.StartSchedule), []byte(d.StopSchedule))
+	m, err := model.NewRepositoryConfig([]byte(d.StartSchedule), []byte(d.StopSchedule))
+	if err != nil {
+		return nil, err
+	}
+	m.Name = d.Name
+	m.Owner = d.Owner
+	return m, nil
 }
