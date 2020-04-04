@@ -30,3 +30,7 @@ func (t *PublishTime) UnmarshalText(text []byte) error {
 func (t PublishTime) MarshalText() ([]byte, error) {
 	return []byte(time.Time(t).Format(time.RFC3339Nano)), nil
 }
+
+func (t PublishTime) String() string {
+	return time.Time(t).Format(time.RFC3339Nano)
+}
