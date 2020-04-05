@@ -2,7 +2,6 @@ package web
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,7 +9,6 @@ import (
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
-	"github.com/aereal/merge-chance-time/domain/model"
 	"github.com/aereal/merge-chance-time/domain/repo"
 	"github.com/aereal/merge-chance-time/logging"
 	"github.com/aereal/merge-chance-time/usecase"
@@ -94,8 +92,8 @@ func (c *Web) handleCron() http.Handler {
 
 		logger.Infof("payload.subscription=%q payload.message.id=%q publishTime=%q data=%q", payload.Subscription, payload.Message.ID, payload.Message.PublishTime, string(payload.Message.Data))
 
-		baseTime := time.Time(payload.Message.PublishTime).Round(time.Minute)
-		notice, err := c.usecase.NotifyEvent(ctx, baseTime)
+		baseTime := time.Time(payload.Message.PublishTime)
+		err := c.usecase.UpdateChanceTime(ctx, c.ghAdapter, baseTime)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("content-type", "application/json")
@@ -103,8 +101,7 @@ func (c *Web) handleCron() http.Handler {
 			return
 		}
 
-		w.Header().Set("content-type", "application/json")
-		json.NewEncoder(w).Encode(notice)
+		w.WriteHeader(http.StatusNoContent)
 	})
 }
 

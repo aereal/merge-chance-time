@@ -62,6 +62,28 @@ func (r *Repository) GetRepositoryConfig(ctx context.Context, owner, name string
 	return repoFrom(snapshot)
 }
 
+func (r *Repository) ListConfigsByOwners(ctx context.Context) (map[string][]*model.RepositoryConfig, error) {
+	ownerIter := r.firestoreClient.Collection("InstallationTarget").Documents(ctx)
+	configs := map[string][]*model.RepositoryConfig{}
+	for {
+		ownerSnapshot, err := ownerIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		repoIter := ownerSnapshot.Ref.Collection("Repository").Documents(ctx)
+		cfgs, err := fetchRepoConfigs(ctx, repoIter)
+		if err != nil {
+			return nil, err
+		}
+		ownerName := ownerSnapshot.Ref.ID
+		configs[ownerName] = cfgs
+	}
+	return configs, nil
+}
+
 func (r *Repository) ListRepositoryConfigs(ctx context.Context) ([]*model.RepositoryConfig, error) {
 	ownerIter := r.firestoreClient.Collection("InstallationTarget").Documents(ctx)
 	configs := []*model.RepositoryConfig{}
