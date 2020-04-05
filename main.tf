@@ -137,11 +137,33 @@ resource "google_cloud_scheduler_job" "update_chance" {
 }
 
 resource "netlify_site" "admin" {
-  name = "merge-chance-time"
+  name          = "merge-chance-time"
+  custom_domain = trimsuffix(google_dns_record_set.root.name, ".")
 
   repo {
     provider    = "github"
     repo_path   = "aereal/merge-chance-time"
     repo_branch = "master"
   }
+}
+
+resource "google_dns_managed_zone" "mergechancetime_app" {
+  name     = "mergechancetime-app"
+  dns_name = "mergechancetime.app."
+}
+
+resource "google_dns_record_set" "root" {
+  name         = google_dns_managed_zone.mergechancetime_app.dns_name
+  type         = "A"
+  ttl          = 300
+  managed_zone = google_dns_managed_zone.mergechancetime_app.name
+  rrdatas      = ["104.198.14.52"]
+}
+
+resource "google_dns_record_set" "www" {
+  name         = "www.${google_dns_managed_zone.mergechancetime_app.dns_name}"
+  type         = "A"
+  ttl          = 300
+  managed_zone = google_dns_managed_zone.mergechancetime_app.name
+  rrdatas      = ["104.198.14.52"]
 }
