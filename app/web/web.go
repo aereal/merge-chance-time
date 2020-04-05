@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
@@ -146,22 +145,18 @@ func (c *Web) onPullRequest(w http.ResponseWriter, r *http.Request, payload *git
 		return
 	}
 	ghClient := c.ghAdapter.NewInstallationClient(payload.Installation.GetID())
-	after := payload.GetAfter()
-	logger.Infof("after commit = %q", after)
-	fullName := payload.GetRepo().GetFullName()
-	names := strings.Split(fullName, "/")
-	if len(names) < 2 {
-		http.Error(w, fmt.Sprintf("invalid repo.fullName: %q", fullName), http.StatusBadRequest)
+
+	err := c.usecase.UpdatePullRequestCommitStatus(ctx, ghClient, payload.GetPullRequest())
+	if err == usecase.ErrConfigNotFound {
+		w.WriteHeader(http.StatusNotFound)
+		w.Header().Set("content-type", "application/json")
+		json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
 		return
 	}
-	_, _, err := ghClient.Repositories.CreateStatus(ctx, names[0], names[1], after, &github.RepoStatus{
-		State:   github.String("success"),
-		Context: github.String("merge-chance-time"),
-	})
 	if err != nil {
-		err = fmt.Errorf("failed to create status: %w", err)
-		logger.Error(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Header().Set("content-type", "application/json")
+		json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

@@ -10,6 +10,7 @@ import (
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
 	"github.com/aereal/merge-chance-time/domain/model"
 	"github.com/aereal/merge-chance-time/domain/repo"
+	"github.com/aereal/merge-chance-time/domain/service"
 	"github.com/aereal/merge-chance-time/logging"
 	"github.com/google/go-github/v30/github"
 	"golang.org/x/sync/errgroup"
@@ -18,6 +19,7 @@ import (
 var (
 	ErrInvalidInput         = fmt.Errorf("invalid input")
 	ErrInstallationNotFound = fmt.Errorf("repository installation not found")
+	ErrConfigNotFound       = fmt.Errorf("repository config not found")
 )
 
 func New(repo *repo.Repository) (*Usecase, error) {
@@ -88,13 +90,17 @@ func (u *Usecase) UpdateChanceTime(ctx context.Context, adapter *githubapps.GitH
 				return fmt.Errorf("no installation found on %s", config.Owner)
 			}
 			installClient := adapter.NewInstallationClient(install.GetID())
+			srv, err := service.New()
+			if err != nil {
+				return err
+			}
 
 			if config.ShouldStartOn(baseTime) {
 				config.MergeAvailable = true
 				toBeUpdated = append(toBeUpdated, config)
 
 				g.Go(func() error {
-					return updateCommitStatuses(c, installClient, install, config, true)
+					return updateCommitStatuses(c, installClient, install, config, srv, true)
 				})
 			}
 			if config.ShouldStopOn(baseTime) {
@@ -102,7 +108,7 @@ func (u *Usecase) UpdateChanceTime(ctx context.Context, adapter *githubapps.GitH
 				toBeUpdated = append(toBeUpdated, config)
 
 				g.Go(func() error {
-					return updateCommitStatuses(c, installClient, install, config, false)
+					return updateCommitStatuses(c, installClient, install, config, srv, false)
 				})
 			}
 		}
@@ -119,29 +125,44 @@ func (u *Usecase) UpdateChanceTime(ctx context.Context, adapter *githubapps.GitH
 	return nil
 }
 
-func updateCommitStatuses(ctx context.Context, installClient *github.Client, install *github.Installation, cfg *model.RepositoryConfig, approve bool) error {
-	logger := logging.GetLogger(ctx)
+func (u *Usecase) UpdatePullRequestCommitStatus(ctx context.Context, client *github.Client, pr *github.PullRequest) error {
+	targetRepo := pr.GetHead().GetRepo()
+	config, err := u.repo.GetRepositoryConfig(ctx, targetRepo.GetOwner().GetLogin(), targetRepo.GetName())
+	if err == repo.ErrNotFound {
+		return ErrConfigNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if config == nil {
+		return nil
+	}
 
+	srv, err := service.New()
+	if err != nil {
+		return err
+	}
+	if config.MergeAvailable {
+		return srv.ApprovePullRequest(ctx, client, pr)
+	}
+
+	return srv.PendingPullRequest(ctx, client, pr)
+}
+
+func updateCommitStatuses(ctx context.Context, installClient *github.Client, install *github.Installation, cfg *model.RepositoryConfig, srv *service.Service, approve bool) error {
 	prs, _, err := installClient.PullRequests.List(ctx, cfg.Owner, cfg.Name, nil)
 	if err != nil {
 		return fmt.Errorf("failed to fetch pull requests on %s/%s: %w", cfg.Owner, cfg.Name, err)
 	}
-	state := "success"
-	ctxName := "merge-chance-time"
-	desc := fmt.Sprintf("%s is open", ctxName)
-	if !approve {
-		state = "failure"
-		desc = fmt.Sprintf("%s is closed", ctxName)
-	}
 	for _, pr := range prs {
-		_, _, err := installClient.Repositories.CreateStatus(ctx, cfg.Owner, cfg.Name, pr.GetHead().GetSHA(), &github.RepoStatus{
-			State:       &state,
-			Context:     &ctxName,
-			Description: &desc,
-		})
-		logger.Infof("create status on %s/%s#%d: error=%+v", cfg.Owner, cfg.Name, pr.GetNumber(), err)
-		if err != nil {
-			return fmt.Errorf("failed to create status on %s/%s#%0d: %w", cfg.Owner, cfg.Name, pr.GetNumber(), err)
+		if approve {
+			if err := srv.ApprovePullRequest(ctx, installClient, pr); err != nil {
+				return err
+			}
+		} else {
+			if err := srv.PendingPullRequest(ctx, installClient, pr); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
