@@ -1,0 +1,8 @@
+{
+  "name": "merge-chance-time",
+  "version": "1.0.0",
+  "repository": "git@github.com:aereal/merge-chance-time.git",
+  "author": "aereal <aereal@aereal.org>",
+  "license": "MIT",
+  "private": true
+}
