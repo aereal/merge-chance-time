@@ -30,7 +30,7 @@ type Usecase struct {
 	repo *repo.Repository
 }
 
-func (u *Usecase) CreateRepositoryConfig(ctx context.Context, ghAppClient *github.Client, owner, name string, input io.Reader) error {
+func (u *Usecase) PutRepositoryConfig(ctx context.Context, ghAppClient *github.Client, owner, name string, input io.Reader) error {
 	var cfg model.RepositoryConfig
 	if err := json.NewDecoder(input).Decode(&cfg); err != nil {
 		return fmt.Errorf("failed to decode input as JSON: %w", ErrInvalidInput)
@@ -50,7 +50,7 @@ func (u *Usecase) CreateRepositoryConfig(ctx context.Context, ghAppClient *githu
 		return ErrInstallationNotFound
 	}
 
-	if err := u.repo.CreateRepositoryConfig(ctx, owner, name, &cfg); err != nil {
+	if err := u.repo.PutRepositoryConfigs(ctx, []*model.RepositoryConfig{&cfg}); err != nil {
 		return fmt.Errorf("failed to create repository config: %w", err)
 	}
 

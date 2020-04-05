@@ -28,18 +28,24 @@ type Repository struct {
 	firestoreClient *firestore.Client
 }
 
-func (r *Repository) CreateRepositoryConfig(ctx context.Context, owner, name string, config *model.RepositoryConfig) error {
-	dto := &dtoRepositoryConfig{
-		Owner:         config.Owner,
-		Name:          config.Name,
-		StartSchedule: config.StartSchedule.String(),
-		StopSchedule:  config.StopSchedule.String(),
+func (r *Repository) PutRepositoryConfigs(ctx context.Context, configs []*model.RepositoryConfig) error {
+	dtos := []*dtoRepositoryConfig{}
+	for _, config := range configs {
+		dto := &dtoRepositoryConfig{
+			Owner:          config.Owner,
+			Name:           config.Name,
+			StartSchedule:  config.StartSchedule.String(),
+			StopSchedule:   config.StopSchedule.String(),
+		}
+		dtos = append(dtos, dto)
 	}
 	batch := r.firestoreClient.Batch()
-	ownerRef := r.firestoreClient.Collection("InstallationTarget").Doc(owner)
-	repoRef := ownerRef.Collection("Repository").Doc(name)
-	batch.Set(ownerRef, map[string]interface{}{})
-	batch.Set(repoRef, dto)
+	for _, dto := range dtos {
+		ownerRef := r.firestoreClient.Collection("InstallationTarget").Doc(dto.Owner)
+		repoRef := ownerRef.Collection("Repository").Doc(dto.Name)
+		batch.Set(ownerRef, map[string]interface{}{})
+		batch.Set(repoRef, dto)
+	}
 	_, err := batch.Commit(ctx)
 	return err
 }
