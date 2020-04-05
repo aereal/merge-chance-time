@@ -63,16 +63,16 @@ var (
 	NowFunc = time.Now
 )
 
-func (c *RepositoryConfig) ShouldStartOn(baseTime time.Time) bool {
-	baseTime = baseTime.Truncate(baseDuration)
-	expectedTime := baseTime.Add(baseDuration)
-	return timeHasCome(c.StartSchedule, baseTime, expectedTime)
+func (c *RepositoryConfig) ShouldStartOn(expected time.Time) bool {
+	expected = expected.Truncate(baseDuration)
+	baseTime := expected.Add(baseDuration * -1)
+	return timeHasCome(c.StartSchedule, baseTime, expected)
 }
 
-func (c *RepositoryConfig) ShouldStopOn(baseTime time.Time) bool {
-	baseTime = baseTime.Truncate(baseDuration)
-	expectedTime := baseTime.Add(baseDuration)
-	return timeHasCome(c.StopSchedule, baseTime, expectedTime)
+func (c *RepositoryConfig) ShouldStopOn(expected time.Time) bool {
+	expected = expected.Truncate(baseDuration)
+	baseTime := expected.Add(baseDuration * -1)
+	return timeHasCome(c.StopSchedule, baseTime, expected)
 }
 
 func (c *RepositoryConfig) Valid() error {
