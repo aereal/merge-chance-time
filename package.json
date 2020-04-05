@@ -9,6 +9,7 @@
     "front/web"
   ],
   "scripts": {
+    "build": "yarn workspace web build",
     "dev": "yarn workspace web start"
   }
 }
