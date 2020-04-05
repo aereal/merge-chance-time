@@ -12,9 +12,12 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
 	"github.com/aereal/merge-chance-time/app/web"
+	"github.com/aereal/merge-chance-time/domain/repo"
+	"github.com/aereal/merge-chance-time/usecase"
 	"github.com/dgrijalva/jwt-go"
 	"go.opencensus.io/plugin/ochttp"
 	"go.opencensus.io/stats/view"
@@ -46,6 +49,9 @@ func run() error {
 	defer cancel()
 
 	httpClient := http.DefaultClient
+	if httpClient.Transport == nil {
+		httpClient.Transport = http.DefaultTransport
+	}
 	if onGAE {
 		exporter, err := stackdriver.NewExporter(stackdriver.Options{Context: ctx})
 		if err != nil {
@@ -87,7 +93,22 @@ func run() error {
 
 	ghAdapter := githubapps.New(int64(githubAppID), privKey, httpClient.Transport)
 
-	w := web.New(onGAE, projectID, ghAdapter, []byte(githubWebhookSecret))
+	fsClient, err := firestore.NewClient(ctx, projectID)
+	if err != nil {
+		return err
+	}
+
+	r, err := repo.New(fsClient)
+	if err != nil {
+		return err
+	}
+
+	uc, err := usecase.New(r)
+	if err != nil {
+		return err
+	}
+
+	w := web.New(onGAE, projectID, ghAdapter, []byte(githubWebhookSecret), r, uc)
 	server := w.Server(port)
 	go graceful(ctx, server, 5*time.Second)
 
