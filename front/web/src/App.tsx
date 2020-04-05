@@ -1,9 +1,5 @@
-import React from 'react';
+import React, { FC } from "react"
 
-function App() {
-  return (
-    <>Merge Chance Time</>
-  );
-}
+const App: FC = () => <>Merge Chance Time</>
 
-export default App;
+export default App
