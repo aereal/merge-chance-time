@@ -85,6 +85,12 @@ func (c *Web) handleCron() http.Handler {
 			fmt.Fprintf(w, "cannot read request: %+v\n", err)
 			return
 		}
+		if payload.Message == nil {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			w.Header().Set("content-type", "application/json")
+			json.NewEncoder(w).Encode(struct{ Error string }{"Invalid payload format"})
+			return
+		}
 
 		logger.Infof("payload.subscription=%q payload.message.id=%q publishTime=%q data=%q", payload.Subscription, payload.Message.ID, payload.Message.PublishTime, string(payload.Message.Data))
 
