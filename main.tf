@@ -11,12 +11,18 @@ terraform {
 
 variable "google_service_account" {}
 
+variable "netlify_token" {}
+
 provider "google" {
   credentials = base64decode(var.google_service_account)
 
   project = "merge-chance-time"
   region  = "asia-northeast1"
   zone    = "asia-northeast1-a"
+}
+
+provider "netlify" {
+  token = var.netlify_token
 }
 
 data "google_project" "current" {}
@@ -127,5 +133,15 @@ resource "google_cloud_scheduler_job" "update_chance" {
   pubsub_target {
     topic_name = google_pubsub_topic.update_chance_topic.id
     data       = base64encode(jsonencode({ "from" = "cloud-scheduler" }))
+  }
+}
+
+resource "netlify_site" "admin" {
+  name = "merge-chance-time"
+
+  repo {
+    provider    = "github"
+    repo_path   = "aereal/merge-chance-time"
+    repo_branch = "master"
   }
 }
