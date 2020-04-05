@@ -49,10 +49,11 @@ func NewRepositoryConfig(startScheduleRepr, stopScheduleRepr []byte) (*Repositor
 }
 
 type RepositoryConfig struct {
-	Owner         string
-	Name          string
-	StartSchedule *CronSchedule
-	StopSchedule  *CronSchedule
+	Owner          string
+	Name           string
+	StartSchedule  *CronSchedule
+	StopSchedule   *CronSchedule
+	MergeAvailable bool
 }
 
 var (

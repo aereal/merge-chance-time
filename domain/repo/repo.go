@@ -36,6 +36,7 @@ func (r *Repository) PutRepositoryConfigs(ctx context.Context, configs []*model.
 			Name:           config.Name,
 			StartSchedule:  config.StartSchedule.String(),
 			StopSchedule:   config.StopSchedule.String(),
+			MergeAvailable: config.MergeAvailable,
 		}
 		dtos = append(dtos, dto)
 	}
@@ -114,10 +115,11 @@ func repoFrom(snapshot *firestore.DocumentSnapshot) (*model.RepositoryConfig, er
 }
 
 type dtoRepositoryConfig struct {
-	Owner         string
-	Name          string
-	StartSchedule string
-	StopSchedule  string
+	Owner          string
+	Name           string
+	StartSchedule  string
+	StopSchedule   string
+	MergeAvailable bool
 }
 
 func (d *dtoRepositoryConfig) ToModel() (*model.RepositoryConfig, error) {
@@ -127,5 +129,6 @@ func (d *dtoRepositoryConfig) ToModel() (*model.RepositoryConfig, error) {
 	}
 	m.Name = d.Name
 	m.Owner = d.Owner
+	m.MergeAvailable = d.MergeAvailable
 	return m, nil
 }
