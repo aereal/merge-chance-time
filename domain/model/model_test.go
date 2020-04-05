@@ -45,48 +45,67 @@ func TestRepositoryConfig_UnmarshalJSON(t *testing.T) {
 	}
 }
 
-func TestRepositoryConfig_ShouldStartOn(t *testing.T) {
-	NowFunc = func() time.Time {
-		return mustParseTime("2020-02-01T00:00:00Z")
-	}
-	defer func() {
-		NowFunc = time.Now
-	}()
-
+func TestRepositoryConfig_timeHasCome(t *testing.T) {
 	type args struct {
-		nowFunc      func() time.Time
-		previousTime time.Time
+		cronSchedule *CronSchedule
+		baseTime     time.Time
+		expectedTime time.Time
 	}
 	tests := []struct {
-		name   string
-		config *RepositoryConfig
-		args   args
-		want   bool
+		name string
+		args args
+		want bool
 	}{
 		{
 			name: "matched",
-			config: &RepositoryConfig{
-				StartSchedule: mustParseSchedule("* * * *"),
-			},
 			args: args{
-				previousTime: NowFunc().Add(baseDuration * -1),
+				cronSchedule: mustParseSchedule("* * * *"),
+				baseTime:     mustParseTime("2020-01-31T23:00:00Z"),
+				expectedTime: mustParseTime("2020-02-01T00:00:00Z"),
 			},
 			want: true,
 		},
 		{
-			name: "with minutes",
-			config: &RepositoryConfig{
-				StartSchedule: mustParseSchedule("* * * *"),
-			},
+			name: "matched (2)",
 			args: args{
-				previousTime: NowFunc().Add(baseDuration * -1).Add(time.Minute),
+				cronSchedule: mustParseSchedule("*/2 * * *"),
+				baseTime:     mustParseTime("2020-01-31T23:00:00Z"),
+				expectedTime: mustParseTime("2020-02-01T00:00:00Z"),
+			},
+			want: true,
+		},
+		{
+			name: "matched (3)",
+			args: args{
+				cronSchedule: mustParseSchedule("*/2 * * *"),
+				baseTime:     mustParseTime("2020-01-31T23:50:00Z"),
+				expectedTime: mustParseTime("2020-02-01T00:00:00Z"),
+			},
+			want: true,
+		},
+		{
+			name: "not matched",
+			args: args{
+				cronSchedule: mustParseSchedule("*/2 * * *"),
+				baseTime:     mustParseTime("2020-02-01T00:00:00Z"),
+				expectedTime: mustParseTime("2020-02-01T01:00:00Z"),
+			},
+			want: false,
+		},
+		{
+			name: "with minutes",
+			args: args{
+				cronSchedule: mustParseSchedule("* * * *"),
+				baseTime:     mustParseTime("2020-01-31T23:01:00Z"),
+				expectedTime: mustParseTime("2020-02-01T00:00:00Z"),
 			},
 			want: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.config.ShouldStartOn(tt.args.previousTime); got != tt.want {
+			got := timeHasCome(tt.args.cronSchedule, tt.args.baseTime, tt.args.expectedTime)
+			if got != tt.want {
 				t.Errorf("RepositoryConfig.ShouldStartOn() = %v, want %v", got, tt.want)
 			}
 		})

@@ -62,12 +62,16 @@ var (
 	NowFunc = time.Now
 )
 
-func (c *RepositoryConfig) ShouldStartOn(previousTime time.Time) bool {
-	return timeHasCome(c.StartSchedule, previousTime)
+func (c *RepositoryConfig) ShouldStartOn(baseTime time.Time) bool {
+	baseTime = baseTime.Truncate(baseDuration)
+	expectedTime := baseTime.Add(baseDuration)
+	return timeHasCome(c.StartSchedule, baseTime, expectedTime)
 }
 
-func (c *RepositoryConfig) ShouldStopOn(previousTime time.Time) bool {
-	return timeHasCome(c.StopSchedule, previousTime)
+func (c *RepositoryConfig) ShouldStopOn(baseTime time.Time) bool {
+	baseTime = baseTime.Truncate(baseDuration)
+	expectedTime := baseTime.Add(baseDuration)
+	return timeHasCome(c.StopSchedule, baseTime, expectedTime)
 }
 
 func (c *RepositoryConfig) Valid() error {
@@ -80,8 +84,7 @@ func (c *RepositoryConfig) Valid() error {
 	return nil
 }
 
-func timeHasCome(schedule *CronSchedule, previousTime time.Time) bool {
-	now := NowFunc().Round(baseDuration)
-	nextTime := schedule.Next(previousTime)
-	return nextTime.Equal(now)
+func timeHasCome(schedule *CronSchedule, baseTime, expectedTime time.Time) bool {
+	nextTime := schedule.Next(baseTime)
+	return nextTime.Equal(expectedTime)
 }
