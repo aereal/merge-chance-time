@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rsa"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -71,14 +72,9 @@ func run() error {
 		return fmt.Errorf("GOOGLE_CLOUD_PROJECT must be defined")
 	}
 
-	keyFileName := "./github-app.private-key.pem"
-	key, err := ioutil.ReadFile(keyFileName)
+	githubAppPrivateKey, err := parseRSAPrivateKeyFile("./github-app.private-key.pem")
 	if err != nil {
-		return fmt.Errorf("cannot open file (%s): %w", keyFileName, err)
-	}
-	privKey, err := jwt.ParseRSAPrivateKeyFromPEM(key)
-	if err != nil {
-		return fmt.Errorf("cannot parse PEM: %w", err)
+		return err
 	}
 
 	githubAppID, err := strconv.Atoi(os.Getenv("GITHUB_APP_IDENTIFIER"))
@@ -91,7 +87,7 @@ func run() error {
 		log.Printf("warning: GITHUB_WEBHOOK_SECRET is empty")
 	}
 
-	ghAdapter := githubapps.New(int64(githubAppID), privKey, httpClient.Transport)
+	ghAdapter := githubapps.New(int64(githubAppID), githubAppPrivateKey, httpClient.Transport)
 
 	fsClient, err := firestore.NewClient(ctx, projectID)
 	if err != nil {
