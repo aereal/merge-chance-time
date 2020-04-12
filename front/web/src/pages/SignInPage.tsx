@@ -24,18 +24,31 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-const redirect = async (): Promise<void> => {
-  await routes.root.push()
-  return
+const signInWithRedirect = (): void => {
+  const params = new URLSearchParams({
+    /* eslint-disable @typescript-eslint/camelcase */
+    client_id: "Iv1.ea8292ed2787c904",
+    redirect_uri: "http://localhost:8000/auth/callback",
+    /* eslint-enable @typescript-eslint/camelcase */
+  })
+  const url = `https://github.com/login/oauth/authorize?${params.toString()}`
+
+  const popup = window.open(url, "_blank", ["location", "status"].join(","))
+  console.log(`popup = ${popup}`)
+  if (popup) {
+    console.log(`---> popup caught`)
+    window.addEventListener("message", (event) => {
+      debugger; // eslint-disable-line
+    })
+  }
 }
 
 export const SignInPage: FC = () => {
   const classes = useStyles()
 
-  const onSubmit = async (event: FormEvent): Promise<void> => {
+  const onSubmit = (event: FormEvent): void => {
     event.preventDefault()
-    await signIn()
-    await routes.root.push()
+    signInWithRedirect()
   }
 
   return (

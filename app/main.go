@@ -15,7 +15,9 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"contrib.go.opencensus.io/exporter/stackdriver"
+	firebase "firebase.google.com/go"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
+	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/aereal/merge-chance-time/app/web"
 	"github.com/aereal/merge-chance-time/domain/repo"
 	"github.com/aereal/merge-chance-time/usecase"
@@ -77,6 +79,11 @@ func run() error {
 		return err
 	}
 
+	tokenPrivateKey, err := parseRSAPrivateKeyFile("./keys/private.pem")
+	if err != nil {
+		return err
+	}
+
 	githubAppID, err := strconv.Atoi(os.Getenv("GITHUB_APP_IDENTIFIER"))
 	if err != nil {
 		return fmt.Errorf("GITHUB_APP_IDENTIFIER must be valid int")
@@ -94,6 +101,21 @@ func run() error {
 		return err
 	}
 
+	fbApp, err := firebase.NewApp(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	authClient, err := fbApp.Auth(ctx)
+	if err != nil {
+		return err
+	}
+
+	authorizer, err := authz.New(tokenPrivateKey)
+	if err != nil {
+		return err
+	}
+
 	r, err := repo.New(fsClient)
 	if err != nil {
 		return err
@@ -104,7 +126,7 @@ func run() error {
 		return err
 	}
 
-	w := web.New(onGAE, projectID, ghAdapter, []byte(githubWebhookSecret), r, uc)
+	w := web.New(onGAE, projectID, ghAdapter, []byte(githubWebhookSecret), r, uc, authClient, httpClient, authorizer)
 	server := w.Server(port)
 	go graceful(ctx, server, 5*time.Second)
 
@@ -114,6 +136,14 @@ func run() error {
 	}
 
 	return nil
+}
+
+func parseRSAPrivateKeyFile(fileName string) (*rsa.PrivateKey, error) {
+	content, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read file %s: %w", fileName, err)
+	}
+	return jwt.ParseRSAPrivateKeyFromPEM(content)
 }
 
 func graceful(parent context.Context, server *http.Server, timeout time.Duration) {

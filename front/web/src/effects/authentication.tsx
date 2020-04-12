@@ -44,6 +44,7 @@ export const useAuthentication = (): AuthenticationStatus => {
       }
 
       const idToken = await user.getIdToken()
+      debugger; // eslint-disable-line
       const { displayName, email, photoURL, phoneNumber, providerId, uid } = user
       setStatus(
         newSignedInStatus({

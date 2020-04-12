@@ -1,22 +1,29 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
+	"firebase.google.com/go/auth"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
+	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/aereal/merge-chance-time/domain/repo"
 	"github.com/aereal/merge-chance-time/logging"
 	"github.com/aereal/merge-chance-time/usecase"
 	"github.com/dimfeld/httptreemux/v5"
 	"github.com/google/go-github/v30/github"
+	"github.com/rs/cors"
 	"go.opencensus.io/plugin/ochttp"
 )
 
-func New(onGAE bool, projectID string, ghAdapter *githubapps.GitHubAppsAdapter, githubWebhookSecret []byte, repo *repo.Repository, uc *usecase.Usecase) *Web {
+func New(onGAE bool, projectID string, ghAdapter *githubapps.GitHubAppsAdapter, githubWebhookSecret []byte, repo *repo.Repository, uc *usecase.Usecase, authClient *auth.Client, httpClient *http.Client, authorizer *authz.Authorizer) *Web {
 	return &Web{
 		onGAE:               onGAE,
 		projectID:           projectID,
@@ -24,6 +31,9 @@ func New(onGAE bool, projectID string, ghAdapter *githubapps.GitHubAppsAdapter, 
 		ghAdapter:           ghAdapter,
 		repo:                repo,
 		usecase:             uc,
+		authClient:          authClient,
+		httpClient:          httpClient,
+		authorizer:          authorizer,
 	}
 }
 
@@ -34,6 +44,9 @@ type Web struct {
 	githubWebhookSecret []byte
 	repo                *repo.Repository
 	usecase             *usecase.Usecase
+	authClient          *auth.Client
+	httpClient          *http.Client
+	authorizer          *authz.Authorizer
 }
 
 func (w *Web) Server(port string) *http.Server {
@@ -61,7 +74,109 @@ func (w *Web) handler() http.Handler {
 	router.UsingContext().Handler(http.MethodGet, "/", http.HandlerFunc(handleRoot))
 	router.UsingContext().Handler(http.MethodPost, "/webhook", http.HandlerFunc(w.handleWebhook))
 	router.UsingContext().Handler(http.MethodPost, "/cron", w.handleCron())
-	return logging.WithLogger(w.projectID)(withDefaultHeaders(router))
+	router.UsingContext().GET("/auth/callback", w.handleGetAuthCallback())
+	if !w.onGAE {
+		group := router.NewGroup("/api")
+		group.UsingContext().Handler(http.MethodGet, "/config", w.handleListRepositoryConfigs())
+		group.UsingContext().Handler(http.MethodGet, "/repos/:owner/:name/config", w.handleGetRepositoryConfig())
+		group.UsingContext().Handler(http.MethodPut, "/repos/:owner/:name/config", w.handlePutRepositoryConfig())
+		group.UsingContext().GET("/installations", w.handleListInstallations())
+		group.UsingContext().GET("/me", w.handleGetMe())
+	}
+	loggingMW := logging.WithLogger(w.projectID)
+	corsMW := cors.AllowAll()
+	return corsMW.Handler(loggingMW(withDefaultHeaders(router)))
+}
+
+func (c *Web) handleGetAuthCallback() http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		logger := logging.GetLogger(ctx)
+		qs := r.URL.Query()
+		logger.Infof("query = %#v", qs)
+
+		w.Header().Set("content-type", "application/json")
+
+		params := url.Values{}
+		params.Set("client_id", "")
+		params.Set("client_secret", "")
+		params.Set("code", qs.Get("code"))
+		authReq, err := http.NewRequest(http.MethodPost, "https://github.com/login/oauth/access_token", strings.NewReader(params.Encode()))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
+			return
+		}
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		resp, err := c.httpClient.Do(authReq.WithContext(ctx))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
+			return
+		}
+		body, _ := ioutil.ReadAll(resp.Body)
+		respBody, _ := url.ParseQuery(string(body))
+
+		accessToken := respBody.Get("access_token")
+		logger.Infof("access_token = %q", accessToken)
+		cryptedToken, err := c.authorizer.IssueAuthenticationToken(&authz.AppClaims{AccessToken: accessToken})
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("cannot issue token: %+v", err)})
+			return
+		}
+
+		escapedToken := url.QueryEscape(cryptedToken)
+		http.Redirect(w, r, fmt.Sprintf("http://localhost:3000/auth/callback?accessToken=%s", escapedToken), http.StatusSeeOther)
+	})
+}
+
+func (c *Web) handleGetMe() http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		w.Header().Set("content-type", "application/json")
+		idToken := strings.Replace(r.Header.Get("authorization"), "Bearer ", "", 1)
+		token, err := c.authClient.VerifyIDToken(ctx, idToken)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("%+v", err)})
+			return
+		}
+
+		userInst, _, err := c.ghAdapter.NewAppClient().Apps.FindUserInstallation(ctx, token.Claims["name"].(string))
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("%+v", err)})
+			return
+		}
+		installationClient := c.ghAdapter.NewInstallationClient(userInst.GetID())
+		repos, _, err := installationClient.Apps.ListUserRepos(ctx, userInst.GetID(), &github.ListOptions{PerPage: 20})
+		if err != nil {
+			// w.WriteHeader(http.StatusUnauthorized)
+			// json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("%+v", err)})
+			// return
+			logging.GetLogger(ctx).Infof("failed to list user repos: %+v", err)
+		}
+		if repos == nil {
+			repos = []*github.Repository{}
+		}
+
+		payload := struct {
+			Token           *auth.Token            `json:"token"`
+			Claims          map[string]interface{} `json:"claims"`
+			Repositories    []*github.Repository   `json:"repositories"`
+			OrgRepositories []*github.Repository   `json:"org_repositories"`
+		}{token, token.Claims, repos, []*github.Repository{}}
+
+		orgRepos, _, err := installationClient.Repositories.ListByOrg(ctx, "oneetyan", nil)
+		if err != nil {
+			logging.GetLogger(ctx).Infof("failed to list repos by org: %s", err)
+		}
+		payload.OrgRepositories = append(payload.OrgRepositories, orgRepos...)
+
+		json.NewEncoder(w).Encode(payload)
+	})
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {

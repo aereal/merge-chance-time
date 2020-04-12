@@ -129,7 +129,7 @@ resource "google_pubsub_subscription" "update_chance_subscription" {
 
 resource "google_cloud_scheduler_job" "update_chance" {
   name     = "update-chance"
-  schedule = "0 * * * *"
+  schedule = "*/15 * * * *"
   pubsub_target {
     topic_name = google_pubsub_topic.update_chance_topic.id
     data       = base64encode(jsonencode({ "from" = "cloud-scheduler" }))

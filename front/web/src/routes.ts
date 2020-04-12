@@ -3,6 +3,6 @@ import { createRouter, defineRoute } from "type-route"
 const router = createRouter({
   root: defineRoute("/"),
   signIn: defineRoute("/sign-in"),
-  showArticle: defineRoute({ id: "path.param.string" }, (p) => `/articles/${p.id}`),
+  callback: defineRoute({ accessToken: "query.param.string.optional" }, () => "/auth/callback"),
 })
 export const { getCurrentRoute, routes, listen } = router
