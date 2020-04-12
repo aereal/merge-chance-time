@@ -72,7 +72,7 @@ func run() error {
 		return err
 	}
 
-	ghAdapter := githubapps.New(cfg.GitHubAppConfig.ID, githubAppPrivateKey, httpClient.Transport)
+	ghAdapter := githubapps.New(cfg.GitHubAppConfig.ID, cfg.GitHubAppConfig.ClientID, cfg.GitHubAppConfig.ClientSecret, githubAppPrivateKey, httpClient)
 
 	fsClient, err := firestore.NewClient(ctx, cfg.GCPProjectID)
 	if err != nil {
