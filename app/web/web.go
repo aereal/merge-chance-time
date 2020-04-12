@@ -19,22 +19,26 @@ import (
 
 func New(onGAE bool, cfg *config.Config, ghAdapter *githubapps.GitHubAppsAdapter, repo *repo.Repository, uc *usecase.Usecase) *Web {
 	return &Web{
-		onGAE:               onGAE,
-		projectID:           cfg.GCPProjectID,
-		githubWebhookSecret: cfg.GitHubAppConfig.WebhookSecret,
-		ghAdapter:           ghAdapter,
-		repo:                repo,
-		usecase:             uc,
+		onGAE:                 onGAE,
+		projectID:             cfg.GCPProjectID,
+		githubWebhookSecret:   cfg.GitHubAppConfig.WebhookSecret,
+		githubAppClientID:     cfg.GitHubAppConfig.ClientID,
+		githubAppClientSecret: cfg.GitHubAppConfig.ClientSecret,
+		ghAdapter:             ghAdapter,
+		repo:                  repo,
+		usecase:               uc,
 	}
 }
 
 type Web struct {
-	onGAE               bool
-	projectID           string
-	ghAdapter           *githubapps.GitHubAppsAdapter
-	githubWebhookSecret []byte
-	repo                *repo.Repository
-	usecase             *usecase.Usecase
+	onGAE                 bool
+	projectID             string
+	ghAdapter             *githubapps.GitHubAppsAdapter
+	githubWebhookSecret   []byte
+	githubAppClientID     string
+	githubAppClientSecret string
+	repo                  *repo.Repository
+	usecase               *usecase.Usecase
 }
 
 func (w *Web) Server(port string) *http.Server {
