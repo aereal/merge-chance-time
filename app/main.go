@@ -9,13 +9,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
 	"cloud.google.com/go/firestore"
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
+	"github.com/aereal/merge-chance-time/app/config"
 	"github.com/aereal/merge-chance-time/app/web"
 	"github.com/aereal/merge-chance-time/domain/repo"
 	"github.com/aereal/merge-chance-time/usecase"
@@ -41,9 +41,9 @@ func init() {
 }
 
 func run() error {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8000"
+	cfg, err := config.NewFromEnvironment()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -67,29 +67,14 @@ func run() error {
 		httpClient.Transport = &ochttp.Transport{}
 	}
 
-	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	if projectID == "" {
-		return fmt.Errorf("GOOGLE_CLOUD_PROJECT must be defined")
-	}
-
 	githubAppPrivateKey, err := parseRSAPrivateKeyFile("./github-app.private-key.pem")
 	if err != nil {
 		return err
 	}
 
-	githubAppID, err := strconv.Atoi(os.Getenv("GITHUB_APP_IDENTIFIER"))
-	if err != nil {
-		return fmt.Errorf("GITHUB_APP_IDENTIFIER must be valid int")
-	}
+	ghAdapter := githubapps.New(cfg.GitHubAppConfig.ID, githubAppPrivateKey, httpClient.Transport)
 
-	githubWebhookSecret := os.Getenv("GITHUB_WEBHOOK_SECRET")
-	if githubWebhookSecret == "" {
-		log.Printf("warning: GITHUB_WEBHOOK_SECRET is empty")
-	}
-
-	ghAdapter := githubapps.New(int64(githubAppID), githubAppPrivateKey, httpClient.Transport)
-
-	fsClient, err := firestore.NewClient(ctx, projectID)
+	fsClient, err := firestore.NewClient(ctx, cfg.GCPProjectID)
 	if err != nil {
 		return err
 	}
@@ -104,8 +89,8 @@ func run() error {
 		return err
 	}
 
-	w := web.New(onGAE, projectID, ghAdapter, []byte(githubWebhookSecret), r, uc)
-	server := w.Server(port)
+	w := web.New(onGAE, cfg, ghAdapter, r, uc)
+	server := w.Server(cfg.ListenPort)
 	go graceful(ctx, server, 5*time.Second)
 
 	log.Printf("starting server; accepting request on %s", server.Addr)

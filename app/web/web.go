@@ -8,6 +8,7 @@ import (
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
+	"github.com/aereal/merge-chance-time/app/config"
 	"github.com/aereal/merge-chance-time/domain/repo"
 	"github.com/aereal/merge-chance-time/logging"
 	"github.com/aereal/merge-chance-time/usecase"
@@ -16,11 +17,11 @@ import (
 	"go.opencensus.io/plugin/ochttp"
 )
 
-func New(onGAE bool, projectID string, ghAdapter *githubapps.GitHubAppsAdapter, githubWebhookSecret []byte, repo *repo.Repository, uc *usecase.Usecase) *Web {
+func New(onGAE bool, cfg *config.Config, ghAdapter *githubapps.GitHubAppsAdapter, repo *repo.Repository, uc *usecase.Usecase) *Web {
 	return &Web{
 		onGAE:               onGAE,
-		projectID:           projectID,
-		githubWebhookSecret: githubWebhookSecret,
+		projectID:           cfg.GCPProjectID,
+		githubWebhookSecret: cfg.GitHubAppConfig.WebhookSecret,
 		ghAdapter:           ghAdapter,
 		repo:                repo,
 		usecase:             uc,
