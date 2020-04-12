@@ -43,6 +43,14 @@ func (a *GitHubAppsAdapter) NewInstallationClient(installID int64) *github.Clien
 	return github.NewClient(&http.Client{Transport: ghinstallation.NewFromAppsTransport(a.appTransport(), installID)})
 }
 
+func (a *GitHubAppsAdapter) NewAuthorizeURL() string {
+	params := url.Values{}
+	params.Set("client_id", a.clientID)
+	params.Set("redirect_uri", "http://localhost:8000/auth/callback") // TODO: built from request URL
+	base := "https://github.com/login/oauth/authorize"
+	return fmt.Sprintf("%s?%s", base, params.Encode())
+}
+
 func (a *GitHubAppsAdapter) CreateUserAccessToken(ctx context.Context, code, state string) (string, error) {
 	if code == "" {
 		return "", fmt.Errorf("code is empty")
