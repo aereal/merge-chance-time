@@ -14,6 +14,7 @@ import (
 	"github.com/aereal/merge-chance-time/usecase"
 	"github.com/dimfeld/httptreemux/v5"
 	"github.com/google/go-github/v30/github"
+	"github.com/rs/cors"
 	"go.opencensus.io/plugin/ochttp"
 )
 
@@ -66,7 +67,9 @@ func (w *Web) handler() http.Handler {
 	router.UsingContext().Handler(http.MethodGet, "/", http.HandlerFunc(handleRoot))
 	router.UsingContext().Handler(http.MethodPost, "/webhook", http.HandlerFunc(w.handleWebhook))
 	router.UsingContext().Handler(http.MethodPost, "/cron", w.handleCron())
-	return logging.WithLogger(w.projectID)(withDefaultHeaders(router))
+	loggingMW := logging.WithLogger(w.projectID)
+	corsMW := cors.AllowAll()
+	return corsMW.Handler(loggingMW(withDefaultHeaders(router)))
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
