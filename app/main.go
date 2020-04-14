@@ -15,6 +15,7 @@ import (
 	"cloud.google.com/go/firestore"
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
+	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/aereal/merge-chance-time/app/config"
 	"github.com/aereal/merge-chance-time/app/web"
 	"github.com/aereal/merge-chance-time/domain/repo"
@@ -72,9 +73,19 @@ func run() error {
 		return err
 	}
 
+	tokenPrivateKey, err := parseRSAPrivateKeyFile("./keys/private.pem")
+	if err != nil {
+		return err
+	}
+
 	ghAdapter := githubapps.New(cfg.GitHubAppConfig.ID, cfg.GitHubAppConfig.ClientID, cfg.GitHubAppConfig.ClientSecret, githubAppPrivateKey, httpClient)
 
 	fsClient, err := firestore.NewClient(ctx, cfg.GCPProjectID)
+	if err != nil {
+		return err
+	}
+
+	authorizer, err := authz.New(tokenPrivateKey)
 	if err != nil {
 		return err
 	}
@@ -89,7 +100,7 @@ func run() error {
 		return err
 	}
 
-	w := web.New(onGAE, cfg, ghAdapter, r, uc)
+	w := web.New(onGAE, cfg, ghAdapter, r, uc, authorizer)
 	server := w.Server(cfg.ListenPort)
 	go graceful(ctx, server, 5*time.Second)
 

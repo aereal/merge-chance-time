@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
+	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/aereal/merge-chance-time/app/config"
 	"github.com/aereal/merge-chance-time/domain/repo"
 	"github.com/aereal/merge-chance-time/logging"
@@ -18,7 +20,7 @@ import (
 	"go.opencensus.io/plugin/ochttp"
 )
 
-func New(onGAE bool, cfg *config.Config, ghAdapter *githubapps.GitHubAppsAdapter, repo *repo.Repository, uc *usecase.Usecase) *Web {
+func New(onGAE bool, cfg *config.Config, ghAdapter *githubapps.GitHubAppsAdapter, repo *repo.Repository, uc *usecase.Usecase, authorizer *authz.Authorizer) *Web {
 	return &Web{
 		onGAE:                 onGAE,
 		projectID:             cfg.GCPProjectID,
@@ -28,6 +30,7 @@ func New(onGAE bool, cfg *config.Config, ghAdapter *githubapps.GitHubAppsAdapter
 		ghAdapter:             ghAdapter,
 		repo:                  repo,
 		usecase:               uc,
+		authorizer:            authorizer,
 	}
 }
 
@@ -40,6 +43,7 @@ type Web struct {
 	githubAppClientSecret string
 	repo                  *repo.Repository
 	usecase               *usecase.Usecase
+	authorizer            *authz.Authorizer
 }
 
 func (w *Web) Server(port string) *http.Server {
@@ -67,9 +71,35 @@ func (w *Web) handler() http.Handler {
 	router.UsingContext().Handler(http.MethodGet, "/", http.HandlerFunc(handleRoot))
 	router.UsingContext().Handler(http.MethodPost, "/webhook", http.HandlerFunc(w.handleWebhook))
 	router.UsingContext().Handler(http.MethodPost, "/cron", w.handleCron())
+	router.UsingContext().GET("/auth/callback", w.handleGetAuthCallback())
 	loggingMW := logging.WithLogger(w.projectID)
 	corsMW := cors.AllowAll()
 	return corsMW.Handler(loggingMW(withDefaultHeaders(router)))
+}
+
+func (c *Web) handleGetAuthCallback() http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		qs := r.URL.Query()
+
+		w.Header().Set("content-type", "application/json")
+
+		accessToken, err := c.ghAdapter.CreateUserAccessToken(ctx, qs.Get("code"), qs.Get("state"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
+			return
+		}
+		cryptedToken, err := c.authorizer.IssueAuthenticationToken(&authz.AppClaims{AccessToken: accessToken})
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("cannot issue token: %+v", err)})
+			return
+		}
+
+		escapedToken := url.QueryEscape(cryptedToken)
+		http.Redirect(w, r, fmt.Sprintf("http://localhost:3000/auth/callback?accessToken=%s", escapedToken), http.StatusSeeOther)
+	})
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
