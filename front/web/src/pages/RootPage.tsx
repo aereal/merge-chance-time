@@ -1,7 +1,8 @@
 import React, { FC, useEffect, useState } from "react"
 import Grid from "@material-ui/core/Grid"
 import Typography from "@material-ui/core/Typography"
-import { useAuthentication, isSignedIn } from "../effects/authentication"
+import { isSignedIn } from "../auth"
+import { useAuthentication } from "../effects/authentication"
 
 interface Token {
   readonly auth_time: number
@@ -29,7 +30,7 @@ interface ErrorPayload {
 type ResponsePayload = Data | ErrorPayload
 
 export const RootPage: FC = () => {
-  const authStatus = useAuthentication()
+  const [authStatus] = useAuthentication()
   const [data, setData] = useState<ResponsePayload>()
   useEffect((): void => {
     if (!isSignedIn(authStatus)) {
@@ -39,7 +40,7 @@ export const RootPage: FC = () => {
     const fetchData = async () => {
       const resp = await fetch("http://localhost:8000/api/me", {
         headers: {
-          authorization: `Bearer ${authStatus.user.idToken}`,
+          authorization: `Bearer ${authStatus.user.token}`,
         },
       })
       const payload = await resp.json()
@@ -52,34 +53,8 @@ export const RootPage: FC = () => {
     <>
       <Grid item xs={12}>
         <Typography variant="h1">Merge Chance Time</Typography>
-        <Payload payload={data} />
         <pre>{JSON.stringify(data, undefined, "  ")}</pre>
       </Grid>
     </>
   )
 }
-
-const Payload: FC<{ readonly payload?: ResponsePayload }> = ({ payload }) => {
-  if (payload === undefined) {
-    return <>empty payload</>
-  }
-
-  if ("Error" in payload) {
-    return <>Error: {payload.Error}</>
-  }
-
-  return (
-    <>
-      {payload.repositories.map((repo) => (
-        <RepositoryItem repo={repo} key={repo.full_name} />
-      ))}
-    </>
-  )
-}
-
-import Paper from "@material-ui/core/Paper"
-const RepositoryItem: FC<{ readonly repo: Repository }> = ({ repo: { full_name: fullName } }) => (
-  <Paper>
-    <Typography variant="body1">{fullName}</Typography>
-  </Paper>
-)

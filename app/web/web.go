@@ -21,6 +21,7 @@ import (
 	"github.com/google/go-github/v30/github"
 	"github.com/rs/cors"
 	"go.opencensus.io/plugin/ochttp"
+	"golang.org/x/oauth2"
 )
 
 func New(onGAE bool, projectID string, ghAdapter *githubapps.GitHubAppsAdapter, githubWebhookSecret []byte, repo *repo.Repository, uc *usecase.Usecase, authClient *auth.Client, httpClient *http.Client, authorizer *authz.Authorizer) *Web {
@@ -132,48 +133,48 @@ func (c *Web) handleGetAuthCallback() http.HandlerFunc {
 	})
 }
 
+func newUserAuthClient(ctx context.Context, claims *authz.AppClaims) *github.Client {
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: claims.AccessToken})
+	client := oauth2.NewClient(ctx, ts)
+	return github.NewClient(client)
+}
+
 func (c *Web) handleGetMe() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+		ctx := context.WithValue(r.Context(), oauth2.HTTPClient, c.httpClient)
+		logger := logging.GetLogger(ctx)
+
 		w.Header().Set("content-type", "application/json")
 		idToken := strings.Replace(r.Header.Get("authorization"), "Bearer ", "", 1)
-		token, err := c.authClient.VerifyIDToken(ctx, idToken)
+		claims, err := c.authorizer.AuthenticateWithToken(idToken)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("%+v", err)})
 			return
 		}
 
-		userInst, _, err := c.ghAdapter.NewAppClient().Apps.FindUserInstallation(ctx, token.Claims["name"].(string))
+		ghClient := newUserAuthClient(ctx, claims)
+
+		userInstallations, _, err := ghClient.Apps.ListUserInstallations(ctx, nil)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("%+v", err)})
 			return
 		}
-		installationClient := c.ghAdapter.NewInstallationClient(userInst.GetID())
-		repos, _, err := installationClient.Apps.ListUserRepos(ctx, userInst.GetID(), &github.ListOptions{PerPage: 20})
-		if err != nil {
-			// w.WriteHeader(http.StatusUnauthorized)
-			// json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("%+v", err)})
-			// return
-			logging.GetLogger(ctx).Infof("failed to list user repos: %+v", err)
-		}
-		if repos == nil {
-			repos = []*github.Repository{}
-		}
+		logger.Infof("%d user installations", len(userInstallations))
 
 		payload := struct {
-			Token           *auth.Token            `json:"token"`
-			Claims          map[string]interface{} `json:"claims"`
-			Repositories    []*github.Repository   `json:"repositories"`
-			OrgRepositories []*github.Repository   `json:"org_repositories"`
-		}{token, token.Claims, repos, []*github.Repository{}}
-
-		orgRepos, _, err := installationClient.Repositories.ListByOrg(ctx, "oneetyan", nil)
-		if err != nil {
-			logging.GetLogger(ctx).Infof("failed to list repos by org: %s", err)
+			Repositories []*github.Repository `json:"repositories"`
+		}{[]*github.Repository{}}
+		for _, userInst := range userInstallations {
+			rs, _, err := ghClient.Apps.ListUserRepos(ctx, userInst.GetID(), nil)
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("%+v", err)})
+				return
+			}
+			payload.Repositories = append(payload.Repositories, rs...)
 		}
-		payload.OrgRepositories = append(payload.OrgRepositories, orgRepos...)
 
 		json.NewEncoder(w).Encode(payload)
 	})

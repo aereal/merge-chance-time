@@ -4,10 +4,10 @@ import Container from "@material-ui/core/Container"
 import Grid from "@material-ui/core/Grid"
 import { Route } from "type-route"
 import { routes, getCurrentRoute, listen } from "./routes"
+import { AuthenticationProvider } from "./effects/authentication"
 import { RootPage } from "./pages/RootPage"
 import { SignInPage } from "./pages/SignInPage"
 import { CallbackPage } from "./pages/CallbackPage"
-import { DefaultAuthenticationProvider } from "./effects/authentication"
 
 interface RoutingProps {
   readonly route: Route<typeof routes>
@@ -35,9 +35,9 @@ const App: FC = () => {
       <CssBaseline />
       <Container maxWidth="md">
         <Grid container>
-          <DefaultAuthenticationProvider>
+          <AuthenticationProvider>
             <Routing route={route} />
-          </DefaultAuthenticationProvider>
+          </AuthenticationProvider>
         </Grid>
       </Container>
     </>

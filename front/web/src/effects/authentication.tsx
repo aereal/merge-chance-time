@@ -1,78 +1,44 @@
-import React, { createContext, useState, useEffect, FC } from "react"
-import firebase from "firebase"
-import { auth } from "../firebase"
-
-interface User extends firebase.UserInfo {
-  readonly idToken: string
-}
-
-interface StatusSignedIn {
-  readonly type: "signed-in"
-  readonly user: User
-}
-const newSignedInStatus = (user: User): StatusSignedIn => ({
-  type: "signed-in",
-  user,
-})
-
-const statusUnauthenticated = { type: "unauthenticated" } as const
-type StatusUnauthenticated = typeof statusUnauthenticated
-
-const statusInitialized = { type: "initialized" } as const
-type StatusInitialized = typeof statusInitialized
-
-export type AuthenticationStatus = StatusInitialized | StatusUnauthenticated | StatusSignedIn
-
-export const isSignedIn = (status: AuthenticationStatus): status is StatusSignedIn => status.type === "signed-in"
-
-export const isUnauthenticated = (status: AuthenticationStatus): status is StatusUnauthenticated =>
-  status.type === "unauthenticated"
-
-export const isInitialized = (status: AuthenticationStatus): status is StatusInitialized =>
-  status.type === "initialized"
+import React, { createContext, useState, useEffect, FC, Dispatch, SetStateAction } from "react"
+import { AuthenticationStatus, statusInitialized, statusUnauthenticated, newSignedInStatus, User } from "../auth"
+import { getItem, setItem } from "../local-storage"
 
 const AuthenticationContext = createContext<AuthenticationStatus>(statusInitialized)
 
-export const useAuthentication = (): AuthenticationStatus => {
+export const useAuthentication = (): [AuthenticationStatus, Dispatch<SetStateAction<AuthenticationStatus>>] => {
   const [status, setStatus] = useState<AuthenticationStatus>(statusInitialized)
 
   useEffect(() => {
-    return auth().onAuthStateChanged(async (user) => {
+    const get = (): void => {
+      const user = getItem("github-user-access-token")
       if (user === null) {
         setStatus(statusUnauthenticated)
         return
       }
+      setStatus(newSignedInStatus(user))
+    }
 
-      const idToken = await user.getIdToken()
-      debugger; // eslint-disable-line
-      const { displayName, email, photoURL, phoneNumber, providerId, uid } = user
-      setStatus(
-        newSignedInStatus({
-          idToken,
-          displayName,
-          email,
-          phoneNumber,
-          photoURL,
-          providerId,
-          uid,
-        })
-      )
-    })
+    get()
   }, [])
 
-  return status
+  return [status, setStatus]
 }
 
-export const DefaultAuthenticationProvider: FC = ({ children }) => (
-  <AuthenticationContext.Provider value={useAuthentication()}>{children}</AuthenticationContext.Provider>
-)
-
-const authProvider = new firebase.auth.GithubAuthProvider()
-
-export const signIn = async (): Promise<void> => {
-  await auth().signInWithPopup(authProvider)
+export const AuthenticationProvider: FC = ({ children }) => {
+  const [status] = useAuthentication()
+  return <AuthenticationContext.Provider value={status}>{children}</AuthenticationContext.Provider>
 }
 
-export const signOut = async (): Promise<void> => {
-  await auth().signOut()
+export const useSignIn = (): ((user: User) => void) => {
+  const [_, setStatus] = useAuthentication()
+  return (user: User): void => {
+    setItem("github-user-access-token", user)
+    setStatus(newSignedInStatus(user))
+  }
+}
+
+export const useSignOut = (): (() => void) => {
+  const [_, setStatus] = useAuthentication()
+  return (): void => {
+    setStatus(statusUnauthenticated)
+  }
 }
