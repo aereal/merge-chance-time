@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
@@ -72,6 +73,7 @@ func (w *Web) handler() http.Handler {
 	router.UsingContext().Handler(http.MethodPost, "/webhook", http.HandlerFunc(w.handleWebhook))
 	router.UsingContext().Handler(http.MethodPost, "/cron", w.handleCron())
 	router.UsingContext().GET("/auth/callback", w.handleGetAuthCallback())
+	router.UsingContext().GET("/api/user/installed_repos", w.handleGetUserInstalledRepos())
 	loggingMW := logging.WithLogger(w.projectID)
 	corsMW := cors.AllowAll()
 	return corsMW.Handler(loggingMW(withDefaultHeaders(router)))
@@ -99,6 +101,43 @@ func (c *Web) handleGetAuthCallback() http.HandlerFunc {
 
 		escapedToken := url.QueryEscape(cryptedToken)
 		http.Redirect(w, r, fmt.Sprintf("http://localhost:3000/auth/callback?accessToken=%s", escapedToken), http.StatusSeeOther)
+	})
+}
+
+func (c *Web) handleGetUserInstalledRepos() http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		w.Header().Set("content-type", "application/json")
+		token := strings.Replace(r.Header.Get("authorization"), "Bearer ", "", 1)
+		claims, err := c.authorizer.AuthenticateWithToken(token)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("%+v", err)})
+			return
+		}
+
+		ghClient := c.ghAdapter.NewUserClient(ctx, claims.AccessToken)
+		userInstallations, _, err := ghClient.Apps.ListUserInstallations(ctx, nil)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("%+v", err)})
+			return
+		}
+
+		payload := struct {
+			Repositories []*github.Repository `json:"repositories"`
+		}{[]*github.Repository{}}
+		for _, userInst := range userInstallations {
+			rs, _, err := ghClient.Apps.ListUserRepos(ctx, userInst.GetID(), nil)
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("%+v", err)})
+				return
+			}
+			payload.Repositories = append(payload.Repositories, rs...)
+		}
+
+		json.NewEncoder(w).Encode(payload)
 	})
 }
 
