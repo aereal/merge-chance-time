@@ -72,11 +72,19 @@ func (w *Web) handler() http.Handler {
 	router.UsingContext().Handler(http.MethodGet, "/", http.HandlerFunc(handleRoot))
 	router.UsingContext().Handler(http.MethodPost, "/webhook", http.HandlerFunc(w.handleWebhook))
 	router.UsingContext().Handler(http.MethodPost, "/cron", w.handleCron())
+	router.UsingContext().GET("/auth/start", w.handleGetAuthStart())
 	router.UsingContext().GET("/auth/callback", w.handleGetAuthCallback())
 	router.UsingContext().GET("/api/user/installed_repos", w.handleGetUserInstalledRepos())
 	loggingMW := logging.WithLogger(w.projectID)
 	corsMW := cors.AllowAll()
 	return corsMW.Handler(loggingMW(withDefaultHeaders(router)))
+}
+
+func (c *Web) handleGetAuthStart() http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nextURL := c.ghAdapter.NewAuthorizeURL()
+		http.Redirect(w, r, nextURL, http.StatusSeeOther)
+	})
 }
 
 func (c *Web) handleGetAuthCallback() http.HandlerFunc {
