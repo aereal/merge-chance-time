@@ -6,6 +6,7 @@ import { Route } from "type-route"
 import { routes, getCurrentRoute, listen } from "./routes"
 import { RootPage } from "./pages/RootPage"
 import { SignInPage } from "./pages/SignInPage"
+import { CallbackPage } from "./pages/CallbackPage"
 import { DefaultAuthenticationProvider } from "./effects/authentication"
 
 interface RoutingProps {
@@ -18,6 +19,8 @@ const Routing: FC<RoutingProps> = ({ route }) => {
       return <SignInPage />
     case routes.root.name:
       return <RootPage />
+    case routes.authCallback.name:
+      return <CallbackPage />
     default:
       return <>Not Found</>
   }

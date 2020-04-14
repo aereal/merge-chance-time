@@ -1,10 +1,11 @@
 import React, { FC } from "react"
 import Grid from "@material-ui/core/Grid"
 import Typography from "@material-ui/core/Typography"
-import { useAuthentication, isSignedIn } from "../effects/authentication"
+import { useAuthentication } from "../effects/authentication"
+import { isSignedIn } from "../auth"
 
 export const RootPage: FC = () => {
-  const authStatus = useAuthentication()
+  const [authStatus] = useAuthentication()
   console.log(`auth status = ${JSON.stringify(authStatus)}`)
 
   if (!isSignedIn(authStatus)) {

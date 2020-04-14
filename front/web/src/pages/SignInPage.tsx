@@ -4,8 +4,6 @@ import Button from "@material-ui/core/Button"
 import makeStyles from "@material-ui/core/styles/makeStyles"
 import Avatar from "@material-ui/core/Avatar"
 import LockOutlinedIcon from "@material-ui/icons/LockOutlined"
-import { signIn } from "../effects/authentication"
-import { routes } from "../routes"
 
 const useStyles = makeStyles((theme) => ({
   paper: {
@@ -24,18 +22,12 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-const redirect = async (): Promise<void> => {
-  await routes.root.push()
-  return
-}
-
 export const SignInPage: FC = () => {
   const classes = useStyles()
 
-  const onSubmit = async (event: FormEvent): Promise<void> => {
+  const onSubmit = (event: FormEvent): void => {
     event.preventDefault()
-    await signIn()
-    await routes.root.push()
+    window.location.href = "http://localhost:8000/auth/start"
   }
 
   return (
