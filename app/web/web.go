@@ -143,6 +143,21 @@ func (c *Web) handleGetUserInstalledRepos() http.HandlerFunc {
 	})
 }
 
+func buildCurrentOrigin(r *http.Request) string {
+	host := r.Host
+	if forwardedHost := r.Header.Get("x-forwarded-host"); forwardedHost != "" {
+		host = forwardedHost
+	}
+	proto := "http"
+	if r.TLS != nil {
+		proto = "https"
+	}
+	if forwardedProto := r.Header.Get("x-forwarded-proto"); forwardedProto != "" {
+		proto = forwardedProto
+	}
+	return fmt.Sprintf("%s://%s", proto, host)
+}
+
 func handleRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
 }
