@@ -85,19 +85,19 @@ func run() error {
 		return err
 	}
 
-	ghAdapter := githubapps.New(cfg.GitHubAppConfig.ID, cfg.GitHubAppConfig.ClientID, cfg.GitHubAppConfig.ClientSecret, githubAppPrivateKey, httpClient)
+	ghAdapter := githubapps.New(cfg.GitHubAppConfig.ID, githubAppPrivateKey, httpClient)
 
-	ghAuthFlow, err := authflow.NewGitHubAuthFlow(cfg.GitHubAppConfig, issuer)
+	authorizer, err := authz.New(issuer)
+	if err != nil {
+		return err
+	}
+
+	ghAuthFlow, err := authflow.NewGitHubAuthFlow(cfg.GitHubAppConfig, issuer, httpClient, authorizer)
 	if err != nil {
 		return err
 	}
 
 	fsClient, err := firestore.NewClient(ctx, cfg.GCPProjectID)
-	if err != nil {
-		return err
-	}
-
-	authorizer, err := authz.New(issuer)
 	if err != nil {
 		return err
 	}

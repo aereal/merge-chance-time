@@ -24,30 +24,26 @@ import (
 
 func New(onGAE bool, cfg *config.Config, ghAdapter *githubapps.GitHubAppsAdapter, repo *repo.Repository, uc *usecase.Usecase, authorizer *authz.Authorizer, githubAuthFlow *authflow.GitHubAuthFlow) *Web {
 	return &Web{
-		onGAE:                 onGAE,
-		projectID:             cfg.GCPProjectID,
-		githubWebhookSecret:   cfg.GitHubAppConfig.WebhookSecret,
-		githubAppClientID:     cfg.GitHubAppConfig.ClientID,
-		githubAppClientSecret: cfg.GitHubAppConfig.ClientSecret,
-		ghAdapter:             ghAdapter,
-		repo:                  repo,
-		usecase:               uc,
-		authorizer:            authorizer,
-		githubAuthFlow:        githubAuthFlow,
+		onGAE:               onGAE,
+		projectID:           cfg.GCPProjectID,
+		githubWebhookSecret: cfg.GitHubAppConfig.WebhookSecret,
+		ghAdapter:           ghAdapter,
+		repo:                repo,
+		usecase:             uc,
+		authorizer:          authorizer,
+		githubAuthFlow:      githubAuthFlow,
 	}
 }
 
 type Web struct {
-	onGAE                 bool
-	projectID             string
-	ghAdapter             *githubapps.GitHubAppsAdapter
-	githubWebhookSecret   []byte
-	githubAppClientID     string
-	githubAppClientSecret string
-	repo                  *repo.Repository
-	usecase               *usecase.Usecase
-	authorizer            *authz.Authorizer
-	githubAuthFlow        *authflow.GitHubAuthFlow
+	onGAE               bool
+	projectID           string
+	ghAdapter           *githubapps.GitHubAppsAdapter
+	githubWebhookSecret []byte
+	repo                *repo.Repository
+	usecase             *usecase.Usecase
+	authorizer          *authz.Authorizer
+	githubAuthFlow      *authflow.GitHubAuthFlow
 }
 
 func (w *Web) Server(port string) *http.Server {
@@ -98,16 +94,10 @@ func (c *Web) handleGetAuthCallback() http.HandlerFunc {
 
 		w.Header().Set("content-type", "application/json")
 
-		accessToken, err := c.ghAdapter.CreateUserAccessToken(ctx, qs.Get("code"), qs.Get("state"))
+		cryptedToken, err := c.githubAuthFlow.IssueEncryptedToken(ctx, qs.Get("code"), qs.Get("state"))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
-			return
-		}
-		cryptedToken, err := c.authorizer.IssueAuthenticationToken(&authz.AppClaims{AccessToken: accessToken})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("cannot issue token: %+v", err)})
 			return
 		}
 
