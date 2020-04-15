@@ -12,6 +12,7 @@ import (
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
 	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/aereal/merge-chance-time/app/config"
+	"github.com/aereal/merge-chance-time/authflow"
 	"github.com/aereal/merge-chance-time/domain/repo"
 	"github.com/aereal/merge-chance-time/logging"
 	"github.com/aereal/merge-chance-time/usecase"
@@ -21,7 +22,7 @@ import (
 	"go.opencensus.io/plugin/ochttp"
 )
 
-func New(onGAE bool, cfg *config.Config, ghAdapter *githubapps.GitHubAppsAdapter, repo *repo.Repository, uc *usecase.Usecase, authorizer *authz.Authorizer) *Web {
+func New(onGAE bool, cfg *config.Config, ghAdapter *githubapps.GitHubAppsAdapter, repo *repo.Repository, uc *usecase.Usecase, authorizer *authz.Authorizer, githubAuthFlow *authflow.GitHubAuthFlow) *Web {
 	return &Web{
 		onGAE:                 onGAE,
 		projectID:             cfg.GCPProjectID,
@@ -32,6 +33,7 @@ func New(onGAE bool, cfg *config.Config, ghAdapter *githubapps.GitHubAppsAdapter
 		repo:                  repo,
 		usecase:               uc,
 		authorizer:            authorizer,
+		githubAuthFlow:        githubAuthFlow,
 	}
 }
 
@@ -45,6 +47,7 @@ type Web struct {
 	repo                  *repo.Repository
 	usecase               *usecase.Usecase
 	authorizer            *authz.Authorizer
+	githubAuthFlow        *authflow.GitHubAuthFlow
 }
 
 func (w *Web) Server(port string) *http.Server {
@@ -83,7 +86,7 @@ func (w *Web) handler() http.Handler {
 func (c *Web) handleGetAuthStart() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		nextURL := c.ghAdapter.NewAuthorizeURL(ctx)
+		nextURL := c.githubAuthFlow.NewAuthorizeURL(ctx)
 		http.Redirect(w, r, nextURL, http.StatusSeeOther)
 	})
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/aereal/merge-chance-time/app/config"
 	"github.com/aereal/merge-chance-time/app/web"
+	"github.com/aereal/merge-chance-time/authflow"
 	"github.com/aereal/merge-chance-time/domain/repo"
 	"github.com/aereal/merge-chance-time/jwtissuer"
 	"github.com/aereal/merge-chance-time/usecase"
@@ -84,7 +85,12 @@ func run() error {
 		return err
 	}
 
-	ghAdapter := githubapps.New(cfg.GitHubAppConfig.ID, cfg.GitHubAppConfig.ClientID, cfg.GitHubAppConfig.ClientSecret, githubAppPrivateKey, httpClient, issuer)
+	ghAdapter := githubapps.New(cfg.GitHubAppConfig.ID, cfg.GitHubAppConfig.ClientID, cfg.GitHubAppConfig.ClientSecret, githubAppPrivateKey, httpClient)
+
+	ghAuthFlow, err := authflow.NewGitHubAuthFlow(cfg.GitHubAppConfig, issuer)
+	if err != nil {
+		return err
+	}
 
 	fsClient, err := firestore.NewClient(ctx, cfg.GCPProjectID)
 	if err != nil {
@@ -106,7 +112,7 @@ func run() error {
 		return err
 	}
 
-	w := web.New(onGAE, cfg, ghAdapter, r, uc, authorizer)
+	w := web.New(onGAE, cfg, ghAdapter, r, uc, authorizer, ghAuthFlow)
 	server := w.Server(cfg.ListenPort)
 	go graceful(ctx, server, 5*time.Second)
 
