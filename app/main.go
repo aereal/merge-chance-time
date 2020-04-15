@@ -19,6 +19,7 @@ import (
 	"github.com/aereal/merge-chance-time/app/config"
 	"github.com/aereal/merge-chance-time/app/web"
 	"github.com/aereal/merge-chance-time/domain/repo"
+	"github.com/aereal/merge-chance-time/jwtissuer"
 	"github.com/aereal/merge-chance-time/usecase"
 	"github.com/dgrijalva/jwt-go"
 	"go.opencensus.io/plugin/ochttp"
@@ -78,6 +79,11 @@ func run() error {
 		return err
 	}
 
+	issuer, err := jwtissuer.NewIssuer(tokenPrivateKey)
+	if err != nil {
+		return err
+	}
+
 	ghAdapter := githubapps.New(cfg.GitHubAppConfig.ID, cfg.GitHubAppConfig.ClientID, cfg.GitHubAppConfig.ClientSecret, githubAppPrivateKey, httpClient)
 
 	fsClient, err := firestore.NewClient(ctx, cfg.GCPProjectID)
@@ -85,7 +91,7 @@ func run() error {
 		return err
 	}
 
-	authorizer, err := authz.New(tokenPrivateKey)
+	authorizer, err := authz.New(issuer)
 	if err != nil {
 		return err
 	}
