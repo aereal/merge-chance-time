@@ -9,18 +9,21 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/aereal/merge-chance-time/jwtissuer"
+	"github.com/aereal/merge-chance-time/logging"
 	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/google/go-github/v30/github"
 	"golang.org/x/oauth2"
 )
 
-func New(appID int64, clientID, clientSecret string, privKey *rsa.PrivateKey, httpClient *http.Client) *GitHubAppsAdapter {
+func New(appID int64, clientID, clientSecret string, privKey *rsa.PrivateKey, httpClient *http.Client, issuer *jwtissuer.Issuer) *GitHubAppsAdapter {
 	return &GitHubAppsAdapter{
 		appID:        appID,
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		privKey:      privKey,
 		httpClient:   httpClient,
+		issuer:       issuer,
 	}
 }
 
@@ -30,6 +33,7 @@ type GitHubAppsAdapter struct {
 	clientSecret string
 	privKey      *rsa.PrivateKey
 	httpClient   *http.Client
+	issuer       *jwtissuer.Issuer
 }
 
 func (a *GitHubAppsAdapter) appTransport() *ghinstallation.AppsTransport {
@@ -50,12 +54,29 @@ func (a *GitHubAppsAdapter) NewUserClient(ctx context.Context, accessToken strin
 	return github.NewClient(client)
 }
 
-func (a *GitHubAppsAdapter) NewAuthorizeURL() string {
+func (a *GitHubAppsAdapter) NewAuthorizeURL(ctx context.Context) string {
 	params := url.Values{}
 	params.Set("client_id", a.clientID)
 	params.Set("redirect_uri", "http://localhost:8000/auth/callback") // TODO: built from request URL
+	state, err := a.generateState()
+	if err != nil {
+		logger := logging.GetLogger(ctx)
+		logger.Warnf("failed to generate authorize state (but skip): %+v", err)
+	}
+	if state != "" {
+		params.Set("state", state)
+	}
 	base := "https://github.com/login/oauth/authorize"
 	return fmt.Sprintf("%s?%s", base, params.Encode())
+}
+
+func (a *GitHubAppsAdapter) generateState() (string, error) {
+	stdClaims := jwtissuer.NewStandardClaims()
+	token, err := a.issuer.Signed(stdClaims)
+	if err != nil {
+		return "", err
+	}
+	return token, nil
 }
 
 func (a *GitHubAppsAdapter) CreateUserAccessToken(ctx context.Context, code, state string) (string, error) {

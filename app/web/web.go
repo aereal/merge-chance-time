@@ -82,7 +82,8 @@ func (w *Web) handler() http.Handler {
 
 func (c *Web) handleGetAuthStart() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		nextURL := c.ghAdapter.NewAuthorizeURL()
+		ctx := r.Context()
+		nextURL := c.ghAdapter.NewAuthorizeURL(ctx)
 		http.Redirect(w, r, nextURL, http.StatusSeeOther)
 	})
 }
