@@ -91,10 +91,10 @@ func (f *GitHubAuthFlow) createUserAccessToken(ctx context.Context, code, state 
 	return token, nil
 }
 
-func (f *GitHubAuthFlow) NewAuthorizeURL(ctx context.Context) string {
+func (f *GitHubAuthFlow) NewAuthorizeURL(ctx context.Context, appOrigin string) string {
 	params := url.Values{}
 	params.Set("client_id", f.clientID)
-	params.Set("redirect_uri", "http://localhost:8000/auth/callback") // TODO: built from request URL
+	params.Set("redirect_uri", fmt.Sprintf("%s/auth/callback", appOrigin))
 	state, err := f.generateState()
 	if err != nil {
 		logger := logging.GetLogger(ctx)

@@ -82,7 +82,7 @@ func (w *Web) handler() http.Handler {
 func (c *Web) handleGetAuthStart() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		nextURL := c.githubAuthFlow.NewAuthorizeURL(ctx)
+		nextURL := c.githubAuthFlow.NewAuthorizeURL(ctx, buildCurrentOrigin(r))
 		http.Redirect(w, r, nextURL, http.StatusSeeOther)
 	})
 }
