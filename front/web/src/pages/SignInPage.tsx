@@ -4,6 +4,7 @@ import Button from "@material-ui/core/Button"
 import makeStyles from "@material-ui/core/styles/makeStyles"
 import Avatar from "@material-ui/core/Avatar"
 import LockOutlinedIcon from "@material-ui/icons/LockOutlined"
+import { apiOrigin } from "../api-origin"
 
 const useStyles = makeStyles((theme) => ({
   paper: {
@@ -29,7 +30,7 @@ export const SignInPage: FC = () => {
     event.preventDefault()
     const params = new URLSearchParams()
     params.set("initiator_url", window.location.origin + "/auth/callback")
-    window.location.href = `http://localhost:8000/auth/start?${params.toString()}`
+    window.location.href = `${apiOrigin()}/auth/start?${params.toString()}`
   }
 
   return (

@@ -3,6 +3,7 @@ import Grid from "@material-ui/core/Grid"
 import Typography from "@material-ui/core/Typography"
 import { useAuthentication } from "../effects/authentication"
 import { isSignedIn } from "../auth"
+import { apiOrigin } from "../api-origin"
 
 export const RootPage: FC = () => {
   const [authStatus] = useAuthentication()
@@ -14,7 +15,7 @@ export const RootPage: FC = () => {
     }
 
     const fetchData = async () => {
-      const resp = await fetch("http://localhost:8000/api/user/installed_repos", {
+      const resp = await fetch(`${apiOrigin()}/api/user/installed_repos`, {
         headers: {
           authorization: `Bearer ${authStatus.user.token}`,
         },
