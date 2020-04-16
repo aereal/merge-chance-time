@@ -50,6 +50,8 @@ jobs:
       - name: export private key
         run: |
           echo "${{ secrets.GH_APP_PRIVATE_KEY }}" > ./github-app.private-key.pem
+          mkdir -p ./keys/
+          echo "${{ secrets.TOKEN_PRIVATE_KEY }}" > ./keys/private.pem
       - name: deploy
         run: |
           gcloud app deploy --quiet --project merge-chance-time ./app.yaml
