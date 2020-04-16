@@ -40,8 +40,15 @@ jobs:
         with:
           service_account_key: ${{ secrets.GCLOUD_AUTH }}
           version: '272.0.0'
+      - name: create app.yaml
+        run: |
+          make build
+        env:
+          GH_APP_CLIENT_ID: ${{ secrets.GH_APP_CLIENT_ID }}
+          GH_APP_CLIENT_SECRET: ${{ secrets.GH_APP_CLIENT_SECRET }}
+          GH_APP_IDENTIFIER: ${{ secrets.GH_APP_IDENTIFIER }}
       - name: deploy
         run: |
-          gcloud app deploy --quiet --project merge-chance-time ./app.yaml ./cron.yaml
+          gcloud app deploy --quiet --project merge-chance-time ./app.yaml
         env:
           CI: true
