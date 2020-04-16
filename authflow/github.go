@@ -11,7 +11,6 @@ import (
 	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/aereal/merge-chance-time/app/config"
 	"github.com/aereal/merge-chance-time/jwtissuer"
-	"github.com/aereal/merge-chance-time/logging"
 )
 
 func NewGitHubAuthFlow(appConfig *config.GitHubAppConfig, issuer *jwtissuer.Issuer, httpClient *http.Client, authorizer *authz.Authorizer) (*GitHubAuthFlow, error) {
@@ -91,20 +90,17 @@ func (f *GitHubAuthFlow) createUserAccessToken(ctx context.Context, code, state 
 	return token, nil
 }
 
-func (f *GitHubAuthFlow) NewAuthorizeURL(ctx context.Context, appOrigin string) string {
+func (f *GitHubAuthFlow) NewAuthorizeURL(ctx context.Context, appOrigin string) (string, error) {
 	params := url.Values{}
 	params.Set("client_id", f.clientID)
 	params.Set("redirect_uri", fmt.Sprintf("%s/auth/callback", appOrigin))
 	state, err := f.generateState()
 	if err != nil {
-		logger := logging.GetLogger(ctx)
-		logger.Warnf("failed to generate authorize state (but skip): %+v", err)
+		return "", fmt.Errorf("failed to generate authorize state: %w", err)
 	}
-	if state != "" {
-		params.Set("state", state)
-	}
+	params.Set("state", state)
 	base := "https://github.com/login/oauth/authorize"
-	return fmt.Sprintf("%s?%s", base, params.Encode())
+	return fmt.Sprintf("%s?%s", base, params.Encode()), nil
 }
 
 func (f *GitHubAuthFlow) generateState() (string, error) {

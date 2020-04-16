@@ -82,7 +82,12 @@ func (w *Web) handler() http.Handler {
 func (c *Web) handleGetAuthStart() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		nextURL := c.githubAuthFlow.NewAuthorizeURL(ctx, buildCurrentOrigin(r))
+		nextURL, err := c.githubAuthFlow.NewAuthorizeURL(ctx, buildCurrentOrigin(r))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
+			return
+		}
 		http.Redirect(w, r, nextURL, http.StatusSeeOther)
 	})
 }
