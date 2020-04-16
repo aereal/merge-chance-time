@@ -9,10 +9,10 @@ import (
 var (
 	keyPort          = "PORT"
 	keyGCPProjectID  = "GOOGLE_CLOUD_PROJECT"
-	keyAppID         = "GITHUB_APP_IDENTIFIER"
-	keyWebhookSecret = "GITHUB_WEBHOOK_SECRET"
-	keyClientID      = "GITHUB_APP_CLIENT_ID"
-	keyClientSecret  = "GITHUB_APP_CLIENT_SECRET"
+	keyAppID         = "GH_APP_IDENTIFIER"
+	keyWebhookSecret = "GH_WEBHOOK_SECRET"
+	keyClientID      = "GH_APP_CLIENT_ID"
+	keyClientSecret  = "GH_APP_CLIENT_SECRET"
 )
 
 func NewFromEnvironment() (*Config, error) {
@@ -32,11 +32,11 @@ func NewFromEnvironment() (*Config, error) {
 	cfg.GitHubAppConfig.WebhookSecret = []byte(envs[keyWebhookSecret])
 	cfg.GitHubAppConfig.ClientID = envs[keyClientID]
 	if cfg.GitHubAppConfig.ClientID == "" {
-		return nil, fmt.Errorf("GITHUB_APP_CLIENT_ID must be defined")
+		return nil, fmt.Errorf("GH_APP_CLIENT_ID must be defined")
 	}
 	cfg.GitHubAppConfig.ClientSecret = envs[keyClientSecret]
 	if cfg.GitHubAppConfig.ClientSecret == "" {
-		return nil, fmt.Errorf("GITHUB_APP_CLIENT_SECRET must be defined")
+		return nil, fmt.Errorf("GH_APP_CLIENT_SECRET must be defined")
 	}
 	appID, err := strconv.Atoi(envs[keyAppID])
 	if err != nil {
