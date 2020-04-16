@@ -82,8 +82,18 @@ func (w *Web) handler() http.Handler {
 func (c *Web) handleGetAuthStart() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		nextURL, err := c.githubAuthFlow.NewAuthorizeURL(ctx, buildCurrentOrigin(r))
+
+		initiatorURL, err := getInitiatorURL(r)
 		if err != nil {
+			w.Header().Set("content-type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
+			return
+		}
+
+		nextURL, err := c.githubAuthFlow.NewAuthorizeURL(ctx, buildCurrentOrigin(r), initiatorURL.String())
+		if err != nil {
+			w.Header().Set("content-type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
 			return
@@ -99,15 +109,14 @@ func (c *Web) handleGetAuthCallback() http.HandlerFunc {
 
 		w.Header().Set("content-type", "application/json")
 
-		cryptedToken, err := c.githubAuthFlow.IssueEncryptedToken(ctx, qs.Get("code"), qs.Get("state"))
+		initiatorURL, err := c.githubAuthFlow.NavigateAuthCompletion(ctx, qs.Get("code"), qs.Get("state"))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
 			return
 		}
 
-		escapedToken := url.QueryEscape(cryptedToken)
-		http.Redirect(w, r, fmt.Sprintf("http://localhost:3000/auth/callback?accessToken=%s", escapedToken), http.StatusSeeOther)
+		http.Redirect(w, r, initiatorURL.String(), http.StatusSeeOther)
 	})
 }
 
@@ -259,4 +268,31 @@ func (c *Web) onPullRequest(w http.ResponseWriter, r *http.Request, payload *git
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func getInitiatorURL(r *http.Request) (*url.URL, error) {
+	raw := r.URL.Query().Get("initiator_url")
+	if raw == "" {
+		return nil, fmt.Errorf("initiator_url is empty")
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("invalid URL: %w", err)
+	}
+	referrer, err := url.Parse(r.Referer())
+	if err != nil {
+		return nil, fmt.Errorf("referrer is invalid URL: %w", err)
+	}
+	initiatorOrigin := origin(parsed)
+	referrerOrigin := origin(referrer)
+	logger := logging.GetLogger(r.Context())
+	logger.Infof("initiatorOrigin=%s referrerOrigin=%s", initiatorOrigin, referrerOrigin)
+	if initiatorOrigin != referrerOrigin {
+		return nil, fmt.Errorf("origin of initiator_url and referrer are different")
+	}
+	return parsed, nil
+}
+
+func origin(url *url.URL) string {
+	return fmt.Sprintf("%s://%s", url.Scheme, url.Host)
 }

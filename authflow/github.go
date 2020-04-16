@@ -11,7 +11,17 @@ import (
 	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/aereal/merge-chance-time/app/config"
 	"github.com/aereal/merge-chance-time/jwtissuer"
+	"gopkg.in/square/go-jose.v2/jwt"
 )
+
+type State struct {
+	InitiatorURL string `json:"initiator_url"`
+}
+
+type StateClaims struct {
+	jwt.Claims
+	State
+}
 
 func NewGitHubAuthFlow(appConfig *config.GitHubAppConfig, issuer *jwtissuer.Issuer, httpClient *http.Client, authorizer *authz.Authorizer) (*GitHubAuthFlow, error) {
 	if appConfig == nil {
@@ -43,16 +53,28 @@ type GitHubAuthFlow struct {
 	authorizer   *authz.Authorizer
 }
 
-func (f *GitHubAuthFlow) IssueEncryptedToken(ctx context.Context, code, state string) (string, error) {
+func (f *GitHubAuthFlow) NavigateAuthCompletion(ctx context.Context, code, state string) (*url.URL, error) {
 	accessToken, err := f.createUserAccessToken(ctx, code, state)
 	if err != nil {
-		return "", err
+		return nil, fmt.Errorf("cannot create user access token: %w", err)
+	}
+	var claims StateClaims
+	if err := f.issuer.ParseSigned(state, &claims); err != nil {
+		return nil, fmt.Errorf("cannot parse token: %w", err)
+	}
+	initiatorURL, err := url.Parse(claims.InitiatorURL)
+	if err != nil {
+		return nil, fmt.Errorf("initiatorURL is invalid: %w", err)
 	}
 	crypted, err := f.authorizer.IssueAuthenticationToken(&authz.AppClaims{AccessToken: accessToken})
 	if err != nil {
-		return "", err
+		return nil, fmt.Errorf("cannot issue token: %w", err)
 	}
-	return crypted, nil
+
+	params := initiatorURL.Query()
+	params.Set("accessToken", crypted)
+	initiatorURL.RawQuery = params.Encode()
+	return initiatorURL, nil
 }
 
 func (f *GitHubAuthFlow) createUserAccessToken(ctx context.Context, code, state string) (string, error) {
@@ -90,11 +112,11 @@ func (f *GitHubAuthFlow) createUserAccessToken(ctx context.Context, code, state 
 	return token, nil
 }
 
-func (f *GitHubAuthFlow) NewAuthorizeURL(ctx context.Context, appOrigin string) (string, error) {
+func (f *GitHubAuthFlow) NewAuthorizeURL(ctx context.Context, appOrigin string, initiatorURL string) (string, error) {
 	params := url.Values{}
 	params.Set("client_id", f.clientID)
 	params.Set("redirect_uri", fmt.Sprintf("%s/auth/callback", appOrigin))
-	state, err := f.generateState()
+	state, err := f.generateState(initiatorURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate authorize state: %w", err)
 	}
@@ -103,9 +125,13 @@ func (f *GitHubAuthFlow) NewAuthorizeURL(ctx context.Context, appOrigin string) 
 	return fmt.Sprintf("%s?%s", base, params.Encode()), nil
 }
 
-func (f *GitHubAuthFlow) generateState() (string, error) {
+func (f *GitHubAuthFlow) generateState(initiatorURL string) (string, error) {
 	stdClaims := jwtissuer.NewStandardClaims()
-	token, err := f.issuer.Signed(stdClaims)
+	claims := StateClaims{
+		stdClaims,
+		State{initiatorURL},
+	}
+	token, err := f.issuer.Signed(claims)
 	if err != nil {
 		return "", err
 	}

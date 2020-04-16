@@ -87,7 +87,7 @@ func (i *Issuer) ParseSignedAndEncrypted(token string, claims ValidatableClaims)
 	return nil
 }
 
-func (i *Issuer) ParseSigned(token string, claims jwt.Claims) error {
+func (i *Issuer) ParseSigned(token string, claims ValidatableClaims) error {
 	t, err := jwt.ParseSigned(token)
 	if err != nil {
 		return err

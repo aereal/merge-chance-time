@@ -27,7 +27,9 @@ export const SignInPage: FC = () => {
 
   const onSubmit = (event: FormEvent): void => {
     event.preventDefault()
-    window.location.href = "http://localhost:8000/auth/start"
+    const params = new URLSearchParams()
+    params.set("initiator_url", window.location.origin + "/auth/callback")
+    window.location.href = `http://localhost:8000/auth/start?${params.toString()}`
   }
 
   return (
