@@ -3,7 +3,11 @@ KEYS_DIR = ./keys
 PRIVATE_KEY = $(KEYS_DIR)/private.pem
 PUBLIC_KEY = $(KEYS_DIR)/public.pem
 
-build: app.yaml $(PRIVATE_KEY) $(PUBLIC_KEY)
+.PHONY: build
+build: app.yaml
+
+.PHONY: keys
+keys: $(PRIVATE_KEY) $(PUBLIC_KEY)
 
 app.yaml: app.base.json
 	cat app.base.json | \
