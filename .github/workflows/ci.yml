@@ -6,7 +6,8 @@ on:
   push:
     branches: [master]
 jobs:
-  test:
+  app-test:
+    name: app/test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -27,12 +28,12 @@ jobs:
         uses: reviewdog/action-golangci-lint@v1
         with:
           github_token: ${{ secrets.github_token }}
-  deploy:
-    name: Deploy
+  app-deploy:
+    name: app/deploy
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     needs:
-      - test
+      - app-test
     steps:
       - uses: actions/checkout@v2
       - name: setup gcloud
