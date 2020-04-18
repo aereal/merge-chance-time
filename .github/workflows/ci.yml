@@ -58,3 +58,33 @@ jobs:
           gcloud app deploy --quiet --project merge-chance-time ./app.yaml
         env:
           CI: true
+  front-test:
+    name: front/test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get yarn cache
+        id: yarn-cache
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v1
+        with:
+          path: ${{ steps.yarn-cache.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+      -
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12.x'
+      - name: install
+        run: yarn install --frozen-lockfile
+      - name: lint
+        uses: reviewdog/action-eslint@v1
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-review
+          eslint_flags: '--ext .ts front/src/**/*'
+      - name: test
+        run: yarn test
+        env:
+          CI: true
