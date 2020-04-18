@@ -58,8 +58,8 @@ jobs:
           gcloud app deploy --quiet --project merge-chance-time ./app.yaml
         env:
           CI: true
-  front-test:
-    name: front/test
+  front:
+    name: front/ci
     runs-on: ubuntu-latest
     steps:
       - name: Get yarn cache
@@ -88,3 +88,15 @@ jobs:
         run: yarn test
         env:
           CI: true
+      - name: build
+        if: github.ref == 'refs/heads/master'
+        run: |
+          echo 'REACT_APP_API_ORIGIN="https://merge-chance-time.app"' > front/web/.env.production
+          yarn build
+      - name: deploy
+        if: github.ref == 'refs/heads/master'
+        run: |
+          npx netlify-cli deploy --prod --dir front/web/build
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
