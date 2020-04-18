@@ -1,6 +1,0 @@
----
-
-runtime: go113
-main: ./app/
-env_variables:
-  GITHUB_APP_IDENTIFIER: 57955

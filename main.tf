@@ -11,12 +11,18 @@ terraform {
 
 variable "google_service_account" {}
 
+variable "netlify_token" {}
+
 provider "google" {
   credentials = base64decode(var.google_service_account)
 
   project = "merge-chance-time"
   region  = "asia-northeast1"
   zone    = "asia-northeast1-a"
+}
+
+provider "netlify" {
+  token = var.netlify_token
 }
 
 data "google_project" "current" {}
@@ -128,4 +134,38 @@ resource "google_cloud_scheduler_job" "update_chance" {
     topic_name = google_pubsub_topic.update_chance_topic.id
     data       = base64encode(jsonencode({ "from" = "cloud-scheduler" }))
   }
+}
+
+resource "netlify_site" "admin" {
+  name          = "merge-chance-time"
+  custom_domain = trimsuffix(google_dns_record_set.root.name, ".")
+
+  repo {
+    provider    = "github"
+    repo_path   = "aereal/merge-chance-time"
+    repo_branch = "master"
+    command     = "yarn build"
+    dir         = "./front/web/build"
+  }
+}
+
+resource "google_dns_managed_zone" "mergechancetime_app" {
+  name     = "mergechancetime-app"
+  dns_name = "mergechancetime.app."
+}
+
+resource "google_dns_record_set" "root" {
+  name         = google_dns_managed_zone.mergechancetime_app.dns_name
+  type         = "A"
+  ttl          = 300
+  managed_zone = google_dns_managed_zone.mergechancetime_app.name
+  rrdatas      = ["104.198.14.52"]
+}
+
+resource "google_dns_record_set" "www" {
+  name         = "www.${google_dns_managed_zone.mergechancetime_app.dns_name}"
+  type         = "A"
+  ttl          = 300
+  managed_zone = google_dns_managed_zone.mergechancetime_app.name
+  rrdatas      = ["104.198.14.52"]
 }

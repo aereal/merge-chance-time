@@ -2,21 +2,25 @@ package main
 
 import (
 	"context"
+	"crypto/rsa"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
 	"cloud.google.com/go/firestore"
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
+	"github.com/aereal/merge-chance-time/app/authz"
+	"github.com/aereal/merge-chance-time/app/config"
 	"github.com/aereal/merge-chance-time/app/web"
+	"github.com/aereal/merge-chance-time/authflow"
 	"github.com/aereal/merge-chance-time/domain/repo"
+	"github.com/aereal/merge-chance-time/jwtissuer"
 	"github.com/aereal/merge-chance-time/usecase"
 	"github.com/dgrijalva/jwt-go"
 	"go.opencensus.io/plugin/ochttp"
@@ -40,9 +44,9 @@ func init() {
 }
 
 func run() error {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8000"
+	cfg, err := config.NewFromEnvironment()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -66,34 +70,34 @@ func run() error {
 		httpClient.Transport = &ochttp.Transport{}
 	}
 
-	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	if projectID == "" {
-		return fmt.Errorf("GOOGLE_CLOUD_PROJECT must be defined")
-	}
-
-	keyFileName := "./github-app.private-key.pem"
-	key, err := ioutil.ReadFile(keyFileName)
+	githubAppPrivateKey, err := parseRSAPrivateKeyFile("./github-app.private-key.pem")
 	if err != nil {
-		return fmt.Errorf("cannot open file (%s): %w", keyFileName, err)
+		return err
 	}
-	privKey, err := jwt.ParseRSAPrivateKeyFromPEM(key)
+
+	tokenPrivateKey, err := parseRSAPrivateKeyFile("./keys/private.pem")
 	if err != nil {
-		return fmt.Errorf("cannot parse PEM: %w", err)
+		return err
 	}
 
-	githubAppID, err := strconv.Atoi(os.Getenv("GITHUB_APP_IDENTIFIER"))
+	issuer, err := jwtissuer.NewIssuer(tokenPrivateKey)
 	if err != nil {
-		return fmt.Errorf("GITHUB_APP_IDENTIFIER must be valid int")
+		return err
 	}
 
-	githubWebhookSecret := os.Getenv("GITHUB_WEBHOOK_SECRET")
-	if githubWebhookSecret == "" {
-		log.Printf("warning: GITHUB_WEBHOOK_SECRET is empty")
+	ghAdapter := githubapps.New(cfg.GitHubAppConfig.ID, githubAppPrivateKey, httpClient)
+
+	authorizer, err := authz.New(issuer)
+	if err != nil {
+		return err
 	}
 
-	ghAdapter := githubapps.New(int64(githubAppID), privKey, httpClient.Transport)
+	ghAuthFlow, err := authflow.NewGitHubAuthFlow(cfg.GitHubAppConfig, issuer, httpClient, authorizer)
+	if err != nil {
+		return err
+	}
 
-	fsClient, err := firestore.NewClient(ctx, projectID)
+	fsClient, err := firestore.NewClient(ctx, cfg.GCPProjectID)
 	if err != nil {
 		return err
 	}
@@ -108,8 +112,8 @@ func run() error {
 		return err
 	}
 
-	w := web.New(onGAE, projectID, ghAdapter, []byte(githubWebhookSecret), r, uc)
-	server := w.Server(port)
+	w := web.New(onGAE, cfg, ghAdapter, r, uc, authorizer, ghAuthFlow)
+	server := w.Server(cfg.ListenPort)
 	go graceful(ctx, server, 5*time.Second)
 
 	log.Printf("starting server; accepting request on %s", server.Addr)
@@ -118,6 +122,14 @@ func run() error {
 	}
 
 	return nil
+}
+
+func parseRSAPrivateKeyFile(fileName string) (*rsa.PrivateKey, error) {
+	content, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read file %s: %w", fileName, err)
+	}
+	return jwt.ParseRSAPrivateKeyFromPEM(content)
 }
 
 func graceful(parent context.Context, server *http.Server, timeout time.Duration) {

@@ -29,7 +29,7 @@ jobs:
           github_token: ${{ secrets.github_token }}
   deploy:
     name: Deploy
-    if: github.ref == 'refs/heads/master'
+    # if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     needs:
       - test
@@ -40,8 +40,20 @@ jobs:
         with:
           service_account_key: ${{ secrets.GCLOUD_AUTH }}
           version: '272.0.0'
+      - name: create app.yaml
+        run: |
+          make build
+        env:
+          GH_APP_CLIENT_ID: ${{ secrets.GH_APP_CLIENT_ID }}
+          GH_APP_CLIENT_SECRET: ${{ secrets.GH_APP_CLIENT_SECRET }}
+          GH_APP_IDENTIFIER: ${{ secrets.GH_APP_IDENTIFIER }}
+      - name: export private key
+        run: |
+          echo "${{ secrets.GH_APP_PRIVATE_KEY }}" > ./github-app.private-key.pem
+          mkdir -p ./keys/
+          echo "${{ secrets.TOKEN_PRIVATE_KEY }}" > ./keys/private.pem
       - name: deploy
         run: |
-          gcloud app deploy --quiet --project merge-chance-time ./app.yaml ./cron.yaml
+          gcloud app deploy --quiet --project merge-chance-time ./app.yaml
         env:
           CI: true
