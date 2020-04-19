@@ -14,10 +14,12 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"contrib.go.opencensus.io/exporter/stackdriver"
+	api "github.com/aereal/merge-chance-time/admin/api/web"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
 	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/aereal/merge-chance-time/app/config"
 	"github.com/aereal/merge-chance-time/app/web"
+	"github.com/aereal/merge-chance-time/app/web/ghapps"
 	"github.com/aereal/merge-chance-time/authflow"
 	"github.com/aereal/merge-chance-time/domain/repo"
 	"github.com/aereal/merge-chance-time/jwtissuer"
@@ -112,7 +114,17 @@ func run() error {
 		return err
 	}
 
-	w := web.New(onGAE, cfg, ghAdapter, r, uc, authorizer, ghAuthFlow)
+	ga, err := ghapps.New(cfg.GitHubAppConfig, ghAdapter, uc)
+	if err != nil {
+		return err
+	}
+
+	a, err := api.New(ghAdapter, authorizer, ghAuthFlow)
+	if err != nil {
+		return err
+	}
+
+	w := web.New(onGAE, cfg, ga.Routes(), a.Routes())
 	server := w.Server(cfg.ListenPort)
 	go graceful(ctx, server, 5*time.Second)
 
