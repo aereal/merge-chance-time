@@ -91,12 +91,12 @@ jobs:
       - name: build
         if: github.ref == 'refs/heads/master'
         run: |
-          echo 'REACT_APP_API_ORIGIN="https://merge-chance-time.app"' > admin/front/.env.production
+          echo 'REACT_APP_API_ORIGIN="https://merge-chance-time.app"' > packages/admin-front/.env.production
           yarn build
       - name: deploy
         if: github.ref == 'refs/heads/master'
         run: |
-          npx netlify-cli deploy --prod --dir admin/front/build
+          npx netlify-cli deploy --prod --dir packages/admin-front/build
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}

@@ -145,7 +145,7 @@ resource "netlify_site" "admin" {
     repo_path   = "aereal/merge-chance-time"
     repo_branch = "master"
     command     = "yarn build"
-    dir         = "./admin/front/build"
+    dir         = "./packages/admin-front"
   }
 }
 
