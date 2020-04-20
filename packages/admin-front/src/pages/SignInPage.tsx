@@ -30,7 +30,7 @@ export const SignInPage: FC = () => {
     event.preventDefault()
     const params = new URLSearchParams()
     params.set("initiator_url", window.location.origin + "/auth/callback")
-    window.location.href = `${apiOrigin()}/auth/start?${params.toString()}`
+    window.location.href = `${apiOrigin()}/api/auth/start?${params.toString()}`
   }
 
   return (

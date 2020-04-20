@@ -6,11 +6,11 @@
   "license": "MIT",
   "private": true,
   "workspaces": [
-    "front/web"
+    "packages/*"
   ],
   "scripts": {
-    "build": "yarn workspace web build",
-    "dev": "yarn workspace web start",
-    "test": "yarn workspace web test"
+    "build": "yarn workspace admin-front build",
+    "dev": "yarn workspace admin-front start",
+    "test": "yarn workspace admin-front test"
   }
 }

@@ -1,49 +1,31 @@
 package web
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
-	"strings"
-	"time"
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
-	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
-	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/aereal/merge-chance-time/app/config"
-	"github.com/aereal/merge-chance-time/authflow"
-	"github.com/aereal/merge-chance-time/domain/repo"
 	"github.com/aereal/merge-chance-time/logging"
-	"github.com/aereal/merge-chance-time/usecase"
 	"github.com/dimfeld/httptreemux/v5"
-	"github.com/google/go-github/v30/github"
 	"github.com/rs/cors"
 	"go.opencensus.io/plugin/ochttp"
 )
 
-func New(onGAE bool, cfg *config.Config, ghAdapter *githubapps.GitHubAppsAdapter, repo *repo.Repository, uc *usecase.Usecase, authorizer *authz.Authorizer, githubAuthFlow *authflow.GitHubAuthFlow) *Web {
+type Handler func(router *httptreemux.TreeMux)
+
+func New(onGAE bool, cfg *config.Config, handlers ...Handler) *Web {
 	return &Web{
-		onGAE:               onGAE,
-		projectID:           cfg.GCPProjectID,
-		githubWebhookSecret: cfg.GitHubAppConfig.WebhookSecret,
-		ghAdapter:           ghAdapter,
-		repo:                repo,
-		usecase:             uc,
-		authorizer:          authorizer,
-		githubAuthFlow:      githubAuthFlow,
+		onGAE:     onGAE,
+		projectID: cfg.GCPProjectID,
+		handlers:  handlers,
 	}
 }
 
 type Web struct {
-	onGAE               bool
-	projectID           string
-	ghAdapter           *githubapps.GitHubAppsAdapter
-	githubWebhookSecret []byte
-	repo                *repo.Repository
-	usecase             *usecase.Usecase
-	authorizer          *authz.Authorizer
-	githubAuthFlow      *authflow.GitHubAuthFlow
+	onGAE     bool
+	projectID string
+	handlers  []Handler
 }
 
 func (w *Web) Server(port string) *http.Server {
@@ -68,231 +50,42 @@ func (w *Web) Server(port string) *http.Server {
 
 func (w *Web) handler() http.Handler {
 	router := httptreemux.New()
+	mw := cors.New(cors.Options{
+		AllowOriginFunc: func(origin string) bool {
+			return true
+		},
+		AllowedMethods: []string{
+			http.MethodHead,
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+		},
+		AllowCredentials: true,
+		AllowedHeaders:   []string{"*"},
+		Debug:            true,
+	})
+	router.UseHandler(logging.WithLogger(w.projectID))
+	router.UseHandler(mw.Handler)
+	router.UseHandler(withDefaultHeaders)
 	router.UsingContext().Handler(http.MethodGet, "/", http.HandlerFunc(handleRoot))
-	router.UsingContext().Handler(http.MethodPost, "/webhook", http.HandlerFunc(w.handleWebhook))
-	router.UsingContext().Handler(http.MethodPost, "/cron", w.handleCron())
-	router.UsingContext().GET("/auth/start", w.handleGetAuthStart())
-	router.UsingContext().GET("/auth/callback", w.handleGetAuthCallback())
-	router.UsingContext().GET("/api/user/installed_repos", w.handleGetUserInstalledRepos())
-	loggingMW := logging.WithLogger(w.projectID)
-	corsMW := cors.AllowAll()
-	return corsMW.Handler(loggingMW(withDefaultHeaders(router)))
-}
-
-func (c *Web) handleGetAuthStart() http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		initiatorURL, err := getInitiatorURL(r)
-		if err != nil {
-			w.Header().Set("content-type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
-			return
-		}
-
-		nextURL, err := c.githubAuthFlow.NewAuthorizeURL(ctx, buildCurrentOrigin(r), initiatorURL.String())
-		if err != nil {
-			w.Header().Set("content-type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
-			return
-		}
-		http.Redirect(w, r, nextURL, http.StatusSeeOther)
-	})
-}
-
-func (c *Web) handleGetAuthCallback() http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		qs := r.URL.Query()
-
-		w.Header().Set("content-type", "application/json")
-
-		initiatorURL, err := c.githubAuthFlow.NavigateAuthCompletion(ctx, qs.Get("code"), qs.Get("state"))
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
-			return
-		}
-
-		http.Redirect(w, r, initiatorURL.String(), http.StatusSeeOther)
-	})
-}
-
-func (c *Web) handleGetUserInstalledRepos() http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		w.Header().Set("content-type", "application/json")
-		token := strings.Replace(r.Header.Get("authorization"), "Bearer ", "", 1)
-		claims, err := c.authorizer.AuthenticateWithToken(token)
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("%+v", err)})
-			return
-		}
-
-		ghClient := c.ghAdapter.NewUserClient(ctx, claims.AccessToken)
-		userInstallations, _, err := ghClient.Apps.ListUserInstallations(ctx, nil)
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("%+v", err)})
-			return
-		}
-
-		payload := struct {
-			Repositories []*github.Repository `json:"repositories"`
-		}{[]*github.Repository{}}
-		for _, userInst := range userInstallations {
-			rs, _, err := ghClient.Apps.ListUserRepos(ctx, userInst.GetID(), nil)
-			if err != nil {
-				w.WriteHeader(http.StatusUnauthorized)
-				json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("%+v", err)})
-				return
-			}
-			payload.Repositories = append(payload.Repositories, rs...)
-		}
-
-		json.NewEncoder(w).Encode(payload)
-	})
-}
-
-func buildCurrentOrigin(r *http.Request) string {
-	host := r.Host
-	if forwardedHost := r.Header.Get("x-forwarded-host"); forwardedHost != "" {
-		host = forwardedHost
+	for _, h := range w.handlers {
+		h(router)
 	}
-	proto := "http"
-	if r.TLS != nil {
-		proto = "https"
-	}
-	if forwardedProto := r.Header.Get("x-forwarded-proto"); forwardedProto != "" {
-		proto = forwardedProto
-	}
-	return fmt.Sprintf("%s://%s", proto, host)
+	return router
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
 }
 
-func (c *Web) handleCron() http.Handler {
+func withDefaultHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		logger := logging.GetLogger(ctx)
-
-		logger.Infof("headers = %#v", r.Header)
-
-		var payload PubSubPayload
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			logger.Warnf("cannot read request: %s", err)
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "cannot read request: %+v\n", err)
-			return
-		}
-		if payload.Message == nil {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Header().Set("content-type", "application/json")
-			json.NewEncoder(w).Encode(struct{ Error string }{"Invalid payload format"})
-			return
-		}
-
-		logger.Infof("payload.subscription=%q payload.message.id=%q publishTime=%q data=%q", payload.Subscription, payload.Message.ID, payload.Message.PublishTime, string(payload.Message.Data))
-
-		baseTime := time.Time(payload.Message.PublishTime)
-		err := c.usecase.UpdateChanceTime(ctx, c.ghAdapter, baseTime)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Header().Set("content-type", "application/json")
-			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
-			return
-		}
-
-		w.WriteHeader(http.StatusNoContent)
+		w.Header().Set("x-frame-options", "deny")
+		w.Header().Set("x-xss-protection", "1; mode=block")
+		w.Header().Set("x-content-type-options", "nosniff")
+		w.Header().Set("content-security-policy", "default-src 'none'")
+		next.ServeHTTP(w, r)
 	})
-}
-
-func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	logger := logging.GetLogger(ctx)
-
-	payloadBytes, err := github.ValidatePayload(r, c.githubWebhookSecret)
-	if err != nil {
-		err = fmt.Errorf("failed to validate incoming payload: %w", err)
-		logger.Error(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	logger.Infof("webhook request body = %s", string(payloadBytes))
-	payload, err := github.ParseWebHook(github.WebHookType(r), payloadBytes)
-	if err != nil {
-		err = fmt.Errorf("failed to parse incoming payload: %w", err)
-		logger.Error(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	logger.Infof("webhook payload = %#v", payload)
-
-	switch p := payload.(type) {
-	case *github.PullRequestEvent:
-		c.onPullRequest(w, r, p)
-	default:
-		w.WriteHeader(http.StatusNoContent)
-	}
-}
-
-func (c *Web) onPullRequest(w http.ResponseWriter, r *http.Request, payload *github.PullRequestEvent) {
-	ctx := r.Context()
-	logger := logging.GetLogger(ctx)
-	logger.Infof("Pull Request Event: %#v", payload)
-	action := payload.GetAction()
-	if action != "opened" && action != "synchronize" {
-		logger.Warnf("Received action is %q skipping", action)
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-	ghClient := c.ghAdapter.NewInstallationClient(payload.Installation.GetID())
-
-	err := c.usecase.UpdatePullRequestCommitStatus(ctx, ghClient, payload.GetPullRequest())
-	if err == usecase.ErrConfigNotFound {
-		w.WriteHeader(http.StatusNotFound)
-		w.Header().Set("content-type", "application/json")
-		json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
-		return
-	}
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Header().Set("content-type", "application/json")
-		json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func getInitiatorURL(r *http.Request) (*url.URL, error) {
-	raw := r.URL.Query().Get("initiator_url")
-	if raw == "" {
-		return nil, fmt.Errorf("initiator_url is empty")
-	}
-	parsed, err := url.Parse(raw)
-	if err != nil {
-		return nil, fmt.Errorf("invalid URL: %w", err)
-	}
-	referrer, err := url.Parse(r.Referer())
-	if err != nil {
-		return nil, fmt.Errorf("referrer is invalid URL: %w", err)
-	}
-	initiatorOrigin := origin(parsed)
-	referrerOrigin := origin(referrer)
-	logger := logging.GetLogger(r.Context())
-	logger.Infof("initiatorOrigin=%s referrerOrigin=%s", initiatorOrigin, referrerOrigin)
-	if initiatorOrigin != referrerOrigin {
-		return nil, fmt.Errorf("origin of initiator_url and referrer are different")
-	}
-	return parsed, nil
-}
-
-func origin(url *url.URL) string {
-	return fmt.Sprintf("%s://%s", url.Scheme, url.Host)
 }

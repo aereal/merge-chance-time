@@ -19,6 +19,8 @@ export const RootPage: FC = () => {
         headers: {
           authorization: `Bearer ${authStatus.user.token}`,
         },
+        mode: "cors",
+        credentials: "include",
       })
       const payload = await resp.json()
       setData(payload)

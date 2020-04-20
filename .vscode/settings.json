@@ -3,7 +3,7 @@
   "editor.formatOnSave": false,
   "editor.formatOnType": false,
   "eslint.workingDirectories": [
-    { "changeProcessCWD": true, "directory": "./front/web" }
+    { "changeProcessCWD": true, "directory": "./packages/admin-front" }
   ],
   "eslint.validate": [
     "javascript",

@@ -120,7 +120,7 @@ resource "google_pubsub_subscription" "update_chance_subscription" {
   name  = "update-chance"
   topic = google_pubsub_topic.update_chance_topic.name
   push_config {
-    push_endpoint = "https://${google_app_engine_application.app.default_hostname}/cron"
+    push_endpoint = "https://${google_app_engine_application.app.default_hostname}/app/cron"
     oidc_token {
       service_account_email = "${google_app_engine_application.app.id}@appspot.gserviceaccount.com"
     }
@@ -145,7 +145,7 @@ resource "netlify_site" "admin" {
     repo_path   = "aereal/merge-chance-time"
     repo_branch = "master"
     command     = "yarn build"
-    dir         = "./front/web/build"
+    dir         = "./packages/admin-front"
   }
 }
 
