@@ -35,6 +35,7 @@ func (s *Web) Routes() func(router *httptreemux.TreeMux) {
 		group.GET("/auth/start", s.handleGetAuthStart())
 		group.GET("/auth/callback", s.handleGetAuthCallback())
 		group.GET("/user/installed_repos", s.handleGetUserInstalledRepos())
+		group.OPTIONS("/user/installed_repos", s.handleGetUserInstalledRepos())
 	}
 }
 
