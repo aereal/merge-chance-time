@@ -32,7 +32,7 @@ export const ListReposPage: FC = () => {
         credentials: "include",
       })
       const payload = await resp.json()
-      setRepos(payload.repositories.map((r: any) => ({ fullName: r.full_name })))
+      setRepos(payload.repositories.map((r: any) => ({ fullName: r.full_name, owner: r.owner.login, name: r.name })))
     }
     fetchData()
   }, [authStatus.type])
