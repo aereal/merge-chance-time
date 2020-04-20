@@ -115,7 +115,7 @@ func (f *GitHubAuthFlow) createUserAccessToken(ctx context.Context, code, state 
 func (f *GitHubAuthFlow) NewAuthorizeURL(ctx context.Context, appOrigin string, initiatorURL string) (string, error) {
 	params := url.Values{}
 	params.Set("client_id", f.clientID)
-	params.Set("redirect_uri", fmt.Sprintf("%s/api/auth/callback", appOrigin))
+	params.Set("redirect_uri", fmt.Sprintf("%s/auth/callback", appOrigin))
 	state, err := f.generateState(initiatorURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate authorize state: %w", err)
