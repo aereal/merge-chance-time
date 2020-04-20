@@ -14,7 +14,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"contrib.go.opencensus.io/exporter/stackdriver"
-	api "github.com/aereal/merge-chance-time/admin/api/web"
+	"github.com/aereal/merge-chance-time/admin/web/api"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
 	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/aereal/merge-chance-time/app/config"
