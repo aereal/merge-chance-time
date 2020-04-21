@@ -19,6 +19,8 @@ import (
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
 	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/aereal/merge-chance-time/app/config"
+	"github.com/aereal/merge-chance-time/app/graph"
+	"github.com/aereal/merge-chance-time/app/graph/generated"
 	"github.com/aereal/merge-chance-time/app/web"
 	"github.com/aereal/merge-chance-time/app/web/ghapps"
 	"github.com/aereal/merge-chance-time/authflow"
@@ -120,7 +122,13 @@ func run() error {
 		return err
 	}
 
-	a, err := api.New(ghAdapter, authorizer)
+	resolver, err := graph.New()
+	if err != nil {
+		return err
+	}
+	es := generated.NewExecutableSchema(generated.Config{Resolvers: resolver})
+
+	a, err := api.New(ghAdapter, authorizer, es)
 	if err != nil {
 		return err
 	}
