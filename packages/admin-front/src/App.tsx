@@ -7,6 +7,8 @@ import { routes, getCurrentRoute, listen } from "./routes"
 import { RootPage } from "./pages/RootPage"
 import { SignInPage } from "./pages/SignInPage"
 import { CallbackPage } from "./pages/CallbackPage"
+import { ListReposPage } from "./pages/ListReposPage"
+import { RepoDetailPage } from "./pages/RepoDetailPage"
 import { DefaultAuthenticationProvider } from "./effects/authentication"
 
 interface RoutingProps {
@@ -21,6 +23,10 @@ const Routing: FC<RoutingProps> = ({ route }) => {
       return <RootPage />
     case routes.authCallback.name:
       return <CallbackPage />
+    case routes.listRepos.name:
+      return <ListReposPage />
+    case routes.repoDetail.name:
+      return <RepoDetailPage params={route.params} />
     default:
       return <>Not Found</>
   }
