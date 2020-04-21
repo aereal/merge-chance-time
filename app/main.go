@@ -122,7 +122,7 @@ func run() error {
 		return err
 	}
 
-	resolver, err := graph.New()
+	resolver, err := graph.New(authorizer, ghAdapter)
 	if err != nil {
 		return err
 	}

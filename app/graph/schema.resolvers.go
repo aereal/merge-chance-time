@@ -5,25 +5,37 @@ package graph
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aereal/merge-chance-time/app/graph/dto"
 	"github.com/aereal/merge-chance-time/app/graph/generated"
 )
 
-func (r *mutationResolver) CreateTodo(ctx context.Context, input dto.NewTodo) (*dto.Todo, error) {
-	panic(fmt.Errorf("not implemented"))
+func (r *queryResolver) Visitor(ctx context.Context) (*dto.User, error) {
+	_, err := r.authorizer.GetCurrentClaims(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.User{}, nil
 }
 
-func (r *queryResolver) Todos(ctx context.Context) ([]*dto.Todo, error) {
-	panic(fmt.Errorf("not implemented"))
+func (r *userResolver) Login(ctx context.Context, obj *dto.User) (string, error) {
+	claims, err := r.authorizer.GetCurrentClaims(ctx)
+	if err != nil {
+		return "", err
+	}
+	client := r.ghAdapter.NewUserClient(ctx, claims.AccessToken)
+	user, _, err := client.Users.Get(ctx, "")
+	if err != nil {
+		return "", err
+	}
+	return user.GetLogin(), nil
 }
-
-// Mutation returns generated.MutationResolver implementation.
-func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
-type mutationResolver struct{ *Resolver }
+// User returns generated.UserResolver implementation.
+func (r *Resolver) User() generated.UserResolver { return &userResolver{r} }
+
 type queryResolver struct{ *Resolver }
+type userResolver struct{ *Resolver }

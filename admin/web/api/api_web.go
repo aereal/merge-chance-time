@@ -37,6 +37,7 @@ func (s *Web) Routes() func(router *httptreemux.TreeMux) {
 	srv := s.newHandler()
 	return func(router *httptreemux.TreeMux) {
 		group := router.UsingContext().NewContextGroup("/api")
+		group.UseHandler(s.authorizer.Middleware())
 		group.GET("/user/installed_repos", s.handleGetUserInstalledRepos())
 		group.OPTIONS("/user/installed_repos", s.handleGetUserInstalledRepos())
 		group.Handler(http.MethodOptions, "/query", srv)
