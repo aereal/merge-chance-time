@@ -10,6 +10,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
+	"github.com/aereal/gqlgen-tracer-opencensus/tracer"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
 	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/dimfeld/httptreemux/v5"
@@ -50,6 +51,7 @@ func (s *Web) newHandler() *handler.Server {
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.POST{})
 	srv.Use(extension.Introspection{})
+	srv.Use(tracer.Tracer{})
 	return srv
 }
 
