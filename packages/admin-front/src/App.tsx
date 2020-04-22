@@ -9,6 +9,7 @@ import { SignInPage } from "./pages/SignInPage"
 import { CallbackPage } from "./pages/CallbackPage"
 import { ListReposPage } from "./pages/ListReposPage"
 import { RepoDetailPage } from "./pages/RepoDetailPage"
+import { TokenPage } from "./pages/TokenPage"
 import { DefaultAuthenticationProvider } from "./effects/authentication"
 
 interface RoutingProps {
@@ -27,6 +28,8 @@ const Routing: FC<RoutingProps> = ({ route }) => {
       return <ListReposPage />
     case routes.repoDetail.name:
       return <RepoDetailPage params={route.params} />
+    case routes.token.name:
+      return <TokenPage />
     default:
       return <>Not Found</>
   }
