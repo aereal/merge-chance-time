@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	tokenLifetime = time.Hour * 12
+	tokenLifetime = time.Hour * 24 * 2
 )
 
 type ValidatableClaims interface {

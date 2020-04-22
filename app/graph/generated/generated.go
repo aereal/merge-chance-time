@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -35,28 +36,54 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	Installation() InstallationResolver
 	Query() QueryResolver
-	User() UserResolver
+	Visitor() VisitorResolver
 }
 
 type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	Installation struct {
+		ID                    func(childComplexity int) int
+		InstalledRepositories func(childComplexity int) int
+	}
+
+	Organization struct {
+		Login func(childComplexity int) int
+	}
+
 	Query struct {
 		Visitor func(childComplexity int) int
+	}
+
+	Repository struct {
+		FullName func(childComplexity int) int
+		ID       func(childComplexity int) int
+		Name     func(childComplexity int) int
+		Owner    func(childComplexity int) int
 	}
 
 	User struct {
 		Login func(childComplexity int) int
 	}
+
+	Visitor struct {
+		Installations func(childComplexity int) int
+		Login         func(childComplexity int) int
+	}
 }
 
-type QueryResolver interface {
-	Visitor(ctx context.Context) (*dto.User, error)
+type InstallationResolver interface {
+	InstalledRepositories(ctx context.Context, obj *dto.Installation) ([]*dto.Repository, error)
 }
-type UserResolver interface {
-	Login(ctx context.Context, obj *dto.User) (string, error)
+type QueryResolver interface {
+	Visitor(ctx context.Context) (*dto.Visitor, error)
+}
+type VisitorResolver interface {
+	Login(ctx context.Context, obj *dto.Visitor) (string, error)
+	Installations(ctx context.Context, obj *dto.Visitor) ([]*dto.Installation, error)
 }
 
 type executableSchema struct {
@@ -74,6 +101,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
+	case "Installation.id":
+		if e.complexity.Installation.ID == nil {
+			break
+		}
+
+		return e.complexity.Installation.ID(childComplexity), true
+
+	case "Installation.installedRepositories":
+		if e.complexity.Installation.InstalledRepositories == nil {
+			break
+		}
+
+		return e.complexity.Installation.InstalledRepositories(childComplexity), true
+
+	case "Organization.login":
+		if e.complexity.Organization.Login == nil {
+			break
+		}
+
+		return e.complexity.Organization.Login(childComplexity), true
+
 	case "Query.visitor":
 		if e.complexity.Query.Visitor == nil {
 			break
@@ -81,12 +129,54 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Visitor(childComplexity), true
 
+	case "Repository.fullName":
+		if e.complexity.Repository.FullName == nil {
+			break
+		}
+
+		return e.complexity.Repository.FullName(childComplexity), true
+
+	case "Repository.id":
+		if e.complexity.Repository.ID == nil {
+			break
+		}
+
+		return e.complexity.Repository.ID(childComplexity), true
+
+	case "Repository.name":
+		if e.complexity.Repository.Name == nil {
+			break
+		}
+
+		return e.complexity.Repository.Name(childComplexity), true
+
+	case "Repository.owner":
+		if e.complexity.Repository.Owner == nil {
+			break
+		}
+
+		return e.complexity.Repository.Owner(childComplexity), true
+
 	case "User.login":
 		if e.complexity.User.Login == nil {
 			break
 		}
 
 		return e.complexity.User.Login(childComplexity), true
+
+	case "Visitor.installations":
+		if e.complexity.Visitor.Installations == nil {
+			break
+		}
+
+		return e.complexity.Visitor.Installations(childComplexity), true
+
+	case "Visitor.login":
+		if e.complexity.Visitor.Login == nil {
+			break
+		}
+
+		return e.complexity.Visitor.Login(childComplexity), true
 
 	}
 	return 0, false
@@ -138,12 +228,37 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	&ast.Source{Name: "schema.gql", Input: `type User {
+	&ast.Source{Name: "schema.gql", Input: `interface RepositoryOwner {
   login: String!
 }
 
+type User implements RepositoryOwner {
+  login: String!
+}
+
+type Organization implements RepositoryOwner {
+  login: String!
+}
+
+type Installation {
+  id: Int!
+  installedRepositories: [Repository!]!
+}
+
+type Repository {
+  id: Int!
+  name: String!
+  fullName: String!
+  owner: RepositoryOwner!
+}
+
+type Visitor {
+  login: String!
+  installations: [Installation!]!
+}
+
 type Query {
-  visitor: User!
+  visitor: Visitor!
 }
 `, BuiltIn: false},
 }
@@ -203,6 +318,108 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
+func (ec *executionContext) _Installation_id(ctx context.Context, field graphql.CollectedField, obj *dto.Installation) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Installation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Installation_installedRepositories(ctx context.Context, field graphql.CollectedField, obj *dto.Installation) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Installation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Installation().InstalledRepositories(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*dto.Repository)
+	fc.Result = res
+	return ec.marshalNRepository2ᚕᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Organization_login(ctx context.Context, field graphql.CollectedField, obj *dto.Organization) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Organization",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Login, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_visitor(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -232,9 +449,9 @@ func (ec *executionContext) _Query_visitor(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*dto.User)
+	res := resTmp.(*dto.Visitor)
 	fc.Result = res
-	return ec.marshalNUser2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐUser(ctx, field.Selections, res)
+	return ec.marshalNVisitor2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐVisitor(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -306,7 +523,7 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 	return ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _User_login(ctx context.Context, field graphql.CollectedField, obj *dto.User) (ret graphql.Marshaler) {
+func (ec *executionContext) _Repository_id(ctx context.Context, field graphql.CollectedField, obj *dto.Repository) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -314,16 +531,50 @@ func (ec *executionContext) _User_login(ctx context.Context, field graphql.Colle
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "User",
+		Object:   "Repository",
 		Field:    field,
 		Args:     nil,
-		IsMethod: true,
+		IsMethod: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().Login(rctx, obj)
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Repository_name(ctx context.Context, field graphql.CollectedField, obj *dto.Repository) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Repository",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -338,6 +589,176 @@ func (ec *executionContext) _User_login(ctx context.Context, field graphql.Colle
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Repository_fullName(ctx context.Context, field graphql.CollectedField, obj *dto.Repository) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Repository",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FullName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Repository_owner(ctx context.Context, field graphql.CollectedField, obj *dto.Repository) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Repository",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Owner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(dto.RepositoryOwner)
+	fc.Result = res
+	return ec.marshalNRepositoryOwner2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryOwner(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _User_login(ctx context.Context, field graphql.CollectedField, obj *dto.User) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "User",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Login, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Visitor_login(ctx context.Context, field graphql.CollectedField, obj *dto.Visitor) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Visitor",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Visitor().Login(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Visitor_installations(ctx context.Context, field graphql.CollectedField, obj *dto.Visitor) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Visitor",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Visitor().Installations(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*dto.Installation)
+	fc.Result = res
+	return ec.marshalNInstallation2ᚕᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐInstallationᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -1399,9 +1820,98 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    ************************** interface.gotpl ***************************
 
+func (ec *executionContext) _RepositoryOwner(ctx context.Context, sel ast.SelectionSet, obj dto.RepositoryOwner) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case *dto.User:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._User(ctx, sel, obj)
+	case dto.Organization:
+		return ec._Organization(ctx, sel, &obj)
+	case *dto.Organization:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Organization(ctx, sel, obj)
+	default:
+		panic(fmt.Errorf("unexpected type %T", obj))
+	}
+}
+
 // endregion ************************** interface.gotpl ***************************
 
 // region    **************************** object.gotpl ****************************
+
+var installationImplementors = []string{"Installation"}
+
+func (ec *executionContext) _Installation(ctx context.Context, sel ast.SelectionSet, obj *dto.Installation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, installationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Installation")
+		case "id":
+			out.Values[i] = ec._Installation_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "installedRepositories":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Installation_installedRepositories(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var organizationImplementors = []string{"Organization", "RepositoryOwner"}
+
+func (ec *executionContext) _Organization(ctx context.Context, sel ast.SelectionSet, obj *dto.Organization) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, organizationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Organization")
+		case "login":
+			out.Values[i] = ec._Organization_login(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
 
 var queryImplementors = []string{"Query"}
 
@@ -1447,7 +1957,49 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 	return out
 }
 
-var userImplementors = []string{"User"}
+var repositoryImplementors = []string{"Repository"}
+
+func (ec *executionContext) _Repository(ctx context.Context, sel ast.SelectionSet, obj *dto.Repository) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, repositoryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Repository")
+		case "id":
+			out.Values[i] = ec._Repository_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "name":
+			out.Values[i] = ec._Repository_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "fullName":
+			out.Values[i] = ec._Repository_fullName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "owner":
+			out.Values[i] = ec._Repository_owner(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var userImplementors = []string{"User", "RepositoryOwner"}
 
 func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj *dto.User) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, userImplementors)
@@ -1459,6 +2011,33 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("User")
 		case "login":
+			out.Values[i] = ec._User_login(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var visitorImplementors = []string{"Visitor"}
+
+func (ec *executionContext) _Visitor(ctx context.Context, sel ast.SelectionSet, obj *dto.Visitor) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, visitorImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Visitor")
+		case "login":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -1466,7 +2045,21 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._User_login(ctx, field, obj)
+				res = ec._Visitor_login(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "installations":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Visitor_installations(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -1742,6 +2335,132 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) marshalNInstallation2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐInstallation(ctx context.Context, sel ast.SelectionSet, v dto.Installation) graphql.Marshaler {
+	return ec._Installation(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNInstallation2ᚕᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐInstallationᚄ(ctx context.Context, sel ast.SelectionSet, v []*dto.Installation) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNInstallation2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐInstallation(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNInstallation2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐInstallation(ctx context.Context, sel ast.SelectionSet, v *dto.Installation) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Installation(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNInt2int64(ctx context.Context, v interface{}) (int64, error) {
+	return graphql.UnmarshalInt64(v)
+}
+
+func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
+	res := graphql.MarshalInt64(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) marshalNRepository2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepository(ctx context.Context, sel ast.SelectionSet, v dto.Repository) graphql.Marshaler {
+	return ec._Repository(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRepository2ᚕᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryᚄ(ctx context.Context, sel ast.SelectionSet, v []*dto.Repository) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRepository2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepository(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNRepository2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepository(ctx context.Context, sel ast.SelectionSet, v *dto.Repository) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Repository(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRepositoryOwner2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryOwner(ctx context.Context, sel ast.SelectionSet, v dto.RepositoryOwner) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._RepositoryOwner(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
 	return graphql.UnmarshalString(v)
 }
@@ -1756,18 +2475,18 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 	return res
 }
 
-func (ec *executionContext) marshalNUser2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐUser(ctx context.Context, sel ast.SelectionSet, v dto.User) graphql.Marshaler {
-	return ec._User(ctx, sel, &v)
+func (ec *executionContext) marshalNVisitor2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐVisitor(ctx context.Context, sel ast.SelectionSet, v dto.Visitor) graphql.Marshaler {
+	return ec._Visitor(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐUser(ctx context.Context, sel ast.SelectionSet, v *dto.User) graphql.Marshaler {
+func (ec *executionContext) marshalNVisitor2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐVisitor(ctx context.Context, sel ast.SelectionSet, v *dto.Visitor) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
 		}
 		return graphql.Null
 	}
-	return ec._User(ctx, sel, v)
+	return ec._Visitor(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
