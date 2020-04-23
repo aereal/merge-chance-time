@@ -8,6 +8,7 @@ import (
 
 	"github.com/aereal/merge-chance-time/app/graph/dto"
 	"github.com/aereal/merge-chance-time/app/graph/generated"
+	"github.com/aereal/merge-chance-time/domain/repo"
 )
 
 func (r *installationResolver) InstalledRepositories(ctx context.Context, obj *dto.Installation) ([]*dto.Repository, error) {
@@ -52,6 +53,21 @@ func (r *queryResolver) Visitor(ctx context.Context) (*dto.Visitor, error) {
 	return &dto.Visitor{}, nil
 }
 
+func (r *repositoryResolver) Config(ctx context.Context, obj *dto.Repository) (*dto.RepositoryConfig, error) {
+	cfg, err := r.repo.GetRepositoryConfig(ctx, obj.Owner.GetLogin(), obj.Name)
+	if err == repo.ErrNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &dto.RepositoryConfig{
+		StartSchedule:  cfg.StartSchedule.String(),
+		StopSchedule:   cfg.StopSchedule.String(),
+		MergeAvailable: cfg.MergeAvailable,
+	}, nil
+}
+
 func (r *visitorResolver) Login(ctx context.Context, obj *dto.Visitor) (string, error) {
 	claims, err := r.authorizer.GetCurrentClaims(ctx)
 	if err != nil {
@@ -90,9 +106,13 @@ func (r *Resolver) Installation() generated.InstallationResolver { return &insta
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
+// Repository returns generated.RepositoryResolver implementation.
+func (r *Resolver) Repository() generated.RepositoryResolver { return &repositoryResolver{r} }
+
 // Visitor returns generated.VisitorResolver implementation.
 func (r *Resolver) Visitor() generated.VisitorResolver { return &visitorResolver{r} }
 
 type installationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+type repositoryResolver struct{ *Resolver }
 type visitorResolver struct{ *Resolver }

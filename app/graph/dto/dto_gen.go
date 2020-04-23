@@ -2,12 +2,8 @@
 
 package dto
 
-type RepositoryOwner interface {
-	IsRepositoryOwner()
+type RepositoryConfig struct {
+	StartSchedule  string `json:"startSchedule"`
+	StopSchedule   string `json:"stopSchedule"`
+	MergeAvailable bool   `json:"mergeAvailable"`
 }
-
-type Organization struct {
-	Login string `json:"login"`
-}
-
-func (Organization) IsRepositoryOwner() {}

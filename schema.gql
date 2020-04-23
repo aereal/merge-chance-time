@@ -20,6 +20,13 @@ type Repository {
   name: String!
   fullName: String!
   owner: RepositoryOwner!
+  config: RepositoryConfig
+}
+
+type RepositoryConfig {
+  startSchedule: String!
+  stopSchedule: String!
+  mergeAvailable: Boolean!
 }
 
 type Visitor {
