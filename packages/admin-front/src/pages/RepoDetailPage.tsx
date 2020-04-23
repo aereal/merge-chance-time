@@ -6,21 +6,15 @@ import gql from "graphql-tag"
 import { useQuery } from "@apollo/react-hooks"
 import { routes } from "../routes"
 import { GetRepoDetail, GetRepoDetailVariables } from "./__generated__/GetRepoDetail"
+import { RepoDetail, REPO_DETAIL_FRAGMENT } from "../components/RepoDetail"
 
 const GET_REPO_DETAIL = gql`
   query GetRepoDetail($owner: String!, $name: String!) {
     repository(owner: $owner, name: $name) {
-      owner {
-        login
-      }
-      name
-      config {
-        startSchedule
-        stopSchedule
-        mergeAvailable
-      }
+      ...RepoDetailFragment
     }
   }
+  ${REPO_DETAIL_FRAGMENT}
 `
 
 interface RepoDetailPageProps {
@@ -48,7 +42,7 @@ export const RepoDetailPage: FC<RepoDetailPageProps> = ({ params }) => {
       <Typography variant="subtitle1">
         {data.repository.owner.login}/{data.repository.name}
       </Typography>
-      <pre>{JSON.stringify(data.repository.config)}</pre>
+      <RepoDetail repo={data.repository} />
     </Grid>
   )
 }
