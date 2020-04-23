@@ -128,7 +128,7 @@ func run() error {
 	}
 	es := generated.NewExecutableSchema(generated.Config{Resolvers: resolver})
 
-	a, err := api.New(ghAdapter, authorizer, es)
+	a, err := api.New(authorizer, es)
 	if err != nil {
 		return err
 	}
