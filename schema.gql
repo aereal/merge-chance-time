@@ -36,4 +36,5 @@ type Visitor {
 
 type Query {
   visitor: Visitor!
+  repository(owner: String!, name: String!): Repository
 }

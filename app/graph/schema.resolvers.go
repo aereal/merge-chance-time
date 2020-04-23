@@ -37,6 +37,19 @@ func (r *queryResolver) Visitor(ctx context.Context) (*dto.Visitor, error) {
 	return &dto.Visitor{}, nil
 }
 
+func (r *queryResolver) Repository(ctx context.Context, owner string, name string) (*dto.Repository, error) {
+	claims, err := r.authorizer.GetCurrentClaims(ctx)
+	if err != nil {
+		return nil, err
+	}
+	client := r.ghAdapter.NewUserClient(ctx, claims.AccessToken)
+	ghRepo, _, err := client.Repositories.Get(ctx, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	return dto.NewRepositoryFromResponse(ghRepo), nil
+}
+
 func (r *repositoryResolver) Config(ctx context.Context, obj *dto.Repository) (*dto.RepositoryConfig, error) {
 	cfg, err := r.repo.GetRepositoryConfig(ctx, obj.Owner.GetLogin(), obj.Name)
 	if err == repo.ErrNotFound {
