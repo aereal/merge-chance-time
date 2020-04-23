@@ -3,13 +3,15 @@ import CssBaseline from "@material-ui/core/CssBaseline"
 import Container from "@material-ui/core/Container"
 import Grid from "@material-ui/core/Grid"
 import { Route } from "type-route"
+import { DefaultAuthenticationProvider } from "./effects/authentication"
+import { DefaultApolloClientProvider } from "./providers/apollo-client"
 import { routes, getCurrentRoute, listen } from "./routes"
 import { RootPage } from "./pages/RootPage"
 import { SignInPage } from "./pages/SignInPage"
 import { CallbackPage } from "./pages/CallbackPage"
 import { ListReposPage } from "./pages/ListReposPage"
 import { RepoDetailPage } from "./pages/RepoDetailPage"
-import { DefaultAuthenticationProvider } from "./effects/authentication"
+import { TokenPage } from "./pages/TokenPage"
 
 interface RoutingProps {
   readonly route: Route<typeof routes>
@@ -27,6 +29,8 @@ const Routing: FC<RoutingProps> = ({ route }) => {
       return <ListReposPage />
     case routes.repoDetail.name:
       return <RepoDetailPage params={route.params} />
+    case routes.token.name:
+      return <TokenPage />
     default:
       return <>Not Found</>
   }
@@ -42,7 +46,9 @@ const App: FC = () => {
       <Container maxWidth="md">
         <Grid container>
           <DefaultAuthenticationProvider>
-            <Routing route={route} />
+            <DefaultApolloClientProvider>
+              <Routing route={route} />
+            </DefaultApolloClientProvider>
           </DefaultAuthenticationProvider>
         </Grid>
       </Container>

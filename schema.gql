@@ -1,0 +1,32 @@
+interface RepositoryOwner {
+  login: String!
+}
+
+type User implements RepositoryOwner {
+  login: String!
+}
+
+type Organization implements RepositoryOwner {
+  login: String!
+}
+
+type Installation {
+  id: Int!
+  installedRepositories: [Repository!]!
+}
+
+type Repository {
+  id: Int!
+  name: String!
+  fullName: String!
+  owner: RepositoryOwner!
+}
+
+type Visitor {
+  login: String!
+  installations: [Installation!]!
+}
+
+type Query {
+  visitor: Visitor!
+}

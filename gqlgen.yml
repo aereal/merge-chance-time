@@ -1,0 +1,36 @@
+schema:
+  - '*.gql'
+
+exec:
+  filename: app/graph/generated/generated.go
+  package: generated
+
+# Uncomment to enable federation
+# federation:
+#   filename: graph/generated/federation.go
+#   package: generated
+
+model:
+  filename: app/graph/dto/dto_gen.go
+  package: dto
+
+resolver:
+  layout: follow-schema
+  dir: app/graph
+  package: graph
+
+autobind:
+  - "github.com/aereal/merge-chance-time/app/graph/dto"
+
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  Int:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32

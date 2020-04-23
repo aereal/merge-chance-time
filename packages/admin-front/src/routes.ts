@@ -12,5 +12,6 @@ const router = createRouter({
     },
     ({ owner, name }) => `/repos/${owner}/${name}`
   ),
+  token: defineRoute("/token"),
 })
 export const { getCurrentRoute, routes, listen } = router

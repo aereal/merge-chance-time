@@ -1,9 +1,10 @@
 import React, { FC } from "react"
 import List from "@material-ui/core/List"
-import { Repo, RepoSummary } from "./RepoSummary"
+import { RepoSummary } from "./RepoSummary"
+import { RepoSummary as RepoSummaryFragment } from "./__generated__/RepoSummary"
 
 interface ReposListProps {
-  readonly repos: Repo[]
+  readonly repos: RepoSummaryFragment[]
 }
 
 export const ReposList: FC<ReposListProps> = ({ repos }) => (
