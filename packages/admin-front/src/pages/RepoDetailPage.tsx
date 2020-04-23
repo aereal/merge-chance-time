@@ -14,6 +14,11 @@ const GET_REPO_DETAIL = gql`
         login
       }
       name
+      config {
+        startSchedule
+        stopSchedule
+        mergeAvailable
+      }
     }
   }
 `
@@ -43,6 +48,7 @@ export const RepoDetailPage: FC<RepoDetailPageProps> = ({ params }) => {
       <Typography variant="subtitle1">
         {data.repository.owner.login}/{data.repository.name}
       </Typography>
+      <pre>{JSON.stringify(data.repository.config)}</pre>
     </Grid>
   )
 }
