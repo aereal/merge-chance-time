@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "build": "yarn workspace admin-front build",
-    "dev": "yarn workspace admin-front start",
+    "dev": "yarn workspace admin-front dev",
     "test": "yarn workspace admin-front test"
   }
 }
