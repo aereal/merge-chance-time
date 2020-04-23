@@ -24,23 +24,7 @@ func (r *installationResolver) InstalledRepositories(ctx context.Context, obj *d
 	}
 	repos := make([]*dto.Repository, len(rs))
 	for i, r := range rs {
-		var owner dto.RepositoryOwner
-		switch r.Owner.GetType() {
-		case "User":
-			owner = &dto.User{
-				Login: r.Owner.GetLogin(),
-			}
-		case "Organization":
-			owner = &dto.Organization{
-				Login: r.Owner.GetLogin(),
-			}
-		}
-		repos[i] = &dto.Repository{
-			ID:       r.GetID(),
-			Name:     r.GetName(),
-			FullName: r.GetFullName(),
-			Owner:    owner,
-		}
+		repos[i] = dto.NewRepositoryFromResponse(r)
 	}
 	return repos, nil
 }
