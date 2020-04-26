@@ -97,7 +97,7 @@ func run() error {
 		return err
 	}
 
-	ghAuthFlow, err := authflow.NewGitHubAuthFlow(cfg.GitHubAppConfig, issuer, httpClient, authorizer)
+	ghAuthFlow, err := authflow.NewGitHubAuthFlow(cfg, issuer, httpClient, authorizer)
 	if err != nil {
 		return err
 	}
