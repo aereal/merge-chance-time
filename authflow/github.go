@@ -23,10 +23,12 @@ type StateClaims struct {
 	State
 }
 
-func NewGitHubAuthFlow(appConfig *config.GitHubAppConfig, issuer *jwtissuer.Issuer, httpClient *http.Client, authorizer *authz.Authorizer) (*GitHubAuthFlow, error) {
-	if appConfig == nil {
+func NewGitHubAuthFlow(cfg *config.Config, issuer *jwtissuer.Issuer, httpClient *http.Client, authorizer *authz.Authorizer) (*GitHubAuthFlow, error) {
+	if cfg == nil {
 		return nil, fmt.Errorf("appConfig is nil")
 	}
+	parsed, _ := url.Parse(cfg.AdminOrigin.String())
+	parsed.Path = "/auth/callback"
 	if issuer == nil {
 		return nil, fmt.Errorf("issuer is nil")
 	}
@@ -37,26 +39,44 @@ func NewGitHubAuthFlow(appConfig *config.GitHubAppConfig, issuer *jwtissuer.Issu
 		return nil, fmt.Errorf("authroizer is nil")
 	}
 	return &GitHubAuthFlow{
-		clientID:     appConfig.ClientID,
-		clientSecret: appConfig.ClientSecret,
-		issuer:       issuer,
-		httpClient:   httpClient,
-		authorizer:   authorizer,
+		clientID:            cfg.GitHubAppConfig.ClientID,
+		clientSecret:        cfg.GitHubAppConfig.ClientSecret,
+		issuer:              issuer,
+		httpClient:          httpClient,
+		authorizer:          authorizer,
+		defaultInitiatorURL: parsed,
 	}, nil
 }
 
 type GitHubAuthFlow struct {
-	clientID     string
-	clientSecret string
-	issuer       *jwtissuer.Issuer
-	httpClient   *http.Client
-	authorizer   *authz.Authorizer
+	clientID            string
+	clientSecret        string
+	issuer              *jwtissuer.Issuer
+	httpClient          *http.Client
+	authorizer          *authz.Authorizer
+	defaultInitiatorURL *url.URL
 }
 
 func (f *GitHubAuthFlow) NavigateAuthCompletion(ctx context.Context, code, state string) (*url.URL, error) {
 	accessToken, err := f.createUserAccessToken(ctx, code, state)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create user access token: %w", err)
+	}
+	initiatorURL, err := f.determineInitiatorURL(state)
+	crypted, err := f.authorizer.IssueAuthenticationToken(&authz.AppClaims{AccessToken: accessToken})
+	if err != nil {
+		return nil, fmt.Errorf("cannot issue token: %w", err)
+	}
+
+	params := initiatorURL.Query()
+	params.Set("accessToken", crypted)
+	initiatorURL.RawQuery = params.Encode()
+	return initiatorURL, nil
+}
+
+func (f *GitHubAuthFlow) determineInitiatorURL(state string) (*url.URL, error) {
+	if state == "" {
+		return f.defaultInitiatorURL, nil
 	}
 	var claims StateClaims
 	if err := f.issuer.ParseSigned(state, &claims); err != nil {
@@ -66,14 +86,6 @@ func (f *GitHubAuthFlow) NavigateAuthCompletion(ctx context.Context, code, state
 	if err != nil {
 		return nil, fmt.Errorf("initiatorURL is invalid: %w", err)
 	}
-	crypted, err := f.authorizer.IssueAuthenticationToken(&authz.AppClaims{AccessToken: accessToken})
-	if err != nil {
-		return nil, fmt.Errorf("cannot issue token: %w", err)
-	}
-
-	params := initiatorURL.Query()
-	params.Set("accessToken", crypted)
-	initiatorURL.RawQuery = params.Encode()
 	return initiatorURL, nil
 }
 

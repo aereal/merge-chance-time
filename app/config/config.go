@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 )
@@ -13,11 +14,12 @@ var (
 	keyWebhookSecret = "GH_WEBHOOK_SECRET"
 	keyClientID      = "GH_APP_CLIENT_ID"
 	keyClientSecret  = "GH_APP_CLIENT_SECRET"
+	keyAdminOrigin   = "ADMIN_ORIGIN"
 )
 
 func NewFromEnvironment() (*Config, error) {
 	cfg := &Config{GitHubAppConfig: &GitHubAppConfig{}}
-	envs := getEnvs(keyPort, keyGCPProjectID, keyAppID, keyWebhookSecret, keyClientID, keyClientSecret)
+	envs := getEnvs(keyPort, keyGCPProjectID, keyAppID, keyWebhookSecret, keyClientID, keyClientSecret, keyAdminOrigin)
 
 	cfg.ListenPort = envs[keyPort]
 	if cfg.ListenPort == "" {
@@ -28,6 +30,18 @@ func NewFromEnvironment() (*Config, error) {
 	if cfg.GCPProjectID == "" {
 		return nil, fmt.Errorf("GOOGLE_CLOUD_PROJECT must be defined")
 	}
+
+	rawURL := envs[keyAdminOrigin]
+	if rawURL == "" {
+		return nil, fmt.Errorf("%s must be defined", keyAdminOrigin)
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, err
+	}
+	parsed.Path = ""
+	parsed.RawPath = ""
+	cfg.AdminOrigin = parsed
 
 	cfg.GitHubAppConfig.WebhookSecret = []byte(envs[keyWebhookSecret])
 	cfg.GitHubAppConfig.ClientID = envs[keyClientID]
@@ -51,6 +65,7 @@ type Config struct {
 	ListenPort      string
 	GCPProjectID    string
 	GitHubAppConfig *GitHubAppConfig
+	AdminOrigin     *url.URL
 }
 
 type GitHubAppConfig struct {
