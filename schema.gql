@@ -20,6 +20,13 @@ type Repository {
   name: String!
   fullName: String!
   owner: RepositoryOwner!
+  config: RepositoryConfig
+}
+
+type RepositoryConfig {
+  startSchedule: String!
+  stopSchedule: String!
+  mergeAvailable: Boolean!
 }
 
 type Visitor {
@@ -29,4 +36,14 @@ type Visitor {
 
 type Query {
   visitor: Visitor!
+  repository(owner: String!, name: String!): Repository
+}
+
+input RepositoryConfigToUpdate {
+  startSchedule: String
+  stopSchedule: String
+}
+
+type Mutation {
+  updateRepositoryConfig(owner: String!, name: String!, config: RepositoryConfigToUpdate!): Boolean!
 }

@@ -37,7 +37,9 @@ type Config struct {
 
 type ResolverRoot interface {
 	Installation() InstallationResolver
+	Mutation() MutationResolver
 	Query() QueryResolver
+	Repository() RepositoryResolver
 	Visitor() VisitorResolver
 }
 
@@ -50,19 +52,31 @@ type ComplexityRoot struct {
 		InstalledRepositories func(childComplexity int) int
 	}
 
+	Mutation struct {
+		UpdateRepositoryConfig func(childComplexity int, owner string, name string, config dto.RepositoryConfigToUpdate) int
+	}
+
 	Organization struct {
 		Login func(childComplexity int) int
 	}
 
 	Query struct {
-		Visitor func(childComplexity int) int
+		Repository func(childComplexity int, owner string, name string) int
+		Visitor    func(childComplexity int) int
 	}
 
 	Repository struct {
+		Config   func(childComplexity int) int
 		FullName func(childComplexity int) int
 		ID       func(childComplexity int) int
 		Name     func(childComplexity int) int
 		Owner    func(childComplexity int) int
+	}
+
+	RepositoryConfig struct {
+		MergeAvailable func(childComplexity int) int
+		StartSchedule  func(childComplexity int) int
+		StopSchedule   func(childComplexity int) int
 	}
 
 	User struct {
@@ -78,8 +92,15 @@ type ComplexityRoot struct {
 type InstallationResolver interface {
 	InstalledRepositories(ctx context.Context, obj *dto.Installation) ([]*dto.Repository, error)
 }
+type MutationResolver interface {
+	UpdateRepositoryConfig(ctx context.Context, owner string, name string, config dto.RepositoryConfigToUpdate) (bool, error)
+}
 type QueryResolver interface {
 	Visitor(ctx context.Context) (*dto.Visitor, error)
+	Repository(ctx context.Context, owner string, name string) (*dto.Repository, error)
+}
+type RepositoryResolver interface {
+	Config(ctx context.Context, obj *dto.Repository) (*dto.RepositoryConfig, error)
 }
 type VisitorResolver interface {
 	Login(ctx context.Context, obj *dto.Visitor) (string, error)
@@ -115,6 +136,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Installation.InstalledRepositories(childComplexity), true
 
+	case "Mutation.updateRepositoryConfig":
+		if e.complexity.Mutation.UpdateRepositoryConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateRepositoryConfig_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateRepositoryConfig(childComplexity, args["owner"].(string), args["name"].(string), args["config"].(dto.RepositoryConfigToUpdate)), true
+
 	case "Organization.login":
 		if e.complexity.Organization.Login == nil {
 			break
@@ -122,12 +155,31 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Organization.Login(childComplexity), true
 
+	case "Query.repository":
+		if e.complexity.Query.Repository == nil {
+			break
+		}
+
+		args, err := ec.field_Query_repository_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Repository(childComplexity, args["owner"].(string), args["name"].(string)), true
+
 	case "Query.visitor":
 		if e.complexity.Query.Visitor == nil {
 			break
 		}
 
 		return e.complexity.Query.Visitor(childComplexity), true
+
+	case "Repository.config":
+		if e.complexity.Repository.Config == nil {
+			break
+		}
+
+		return e.complexity.Repository.Config(childComplexity), true
 
 	case "Repository.fullName":
 		if e.complexity.Repository.FullName == nil {
@@ -156,6 +208,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Repository.Owner(childComplexity), true
+
+	case "RepositoryConfig.mergeAvailable":
+		if e.complexity.RepositoryConfig.MergeAvailable == nil {
+			break
+		}
+
+		return e.complexity.RepositoryConfig.MergeAvailable(childComplexity), true
+
+	case "RepositoryConfig.startSchedule":
+		if e.complexity.RepositoryConfig.StartSchedule == nil {
+			break
+		}
+
+		return e.complexity.RepositoryConfig.StartSchedule(childComplexity), true
+
+	case "RepositoryConfig.stopSchedule":
+		if e.complexity.RepositoryConfig.StopSchedule == nil {
+			break
+		}
+
+		return e.complexity.RepositoryConfig.StopSchedule(childComplexity), true
 
 	case "User.login":
 		if e.complexity.User.Login == nil {
@@ -195,6 +268,20 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			}
 			first = false
 			data := ec._Query(ctx, rc.Operation.SelectionSet)
+			var buf bytes.Buffer
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
+		}
+	case ast.Mutation:
+		return func(ctx context.Context) *graphql.Response {
+			if !first {
+				return nil
+			}
+			first = false
+			data := ec._Mutation(ctx, rc.Operation.SelectionSet)
 			var buf bytes.Buffer
 			data.MarshalGQL(&buf)
 
@@ -250,6 +337,13 @@ type Repository {
   name: String!
   fullName: String!
   owner: RepositoryOwner!
+  config: RepositoryConfig
+}
+
+type RepositoryConfig {
+  startSchedule: String!
+  stopSchedule: String!
+  mergeAvailable: Boolean!
 }
 
 type Visitor {
@@ -259,6 +353,16 @@ type Visitor {
 
 type Query {
   visitor: Visitor!
+  repository(owner: String!, name: String!): Repository
+}
+
+input RepositoryConfigToUpdate {
+  startSchedule: String
+  stopSchedule: String
+}
+
+type Mutation {
+  updateRepositoryConfig(owner: String!, name: String!, config: RepositoryConfigToUpdate!): Boolean!
 }
 `, BuiltIn: false},
 }
@@ -267,6 +371,36 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_updateRepositoryConfig_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["owner"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["owner"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["name"]; ok {
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["name"] = arg1
+	var arg2 dto.RepositoryConfigToUpdate
+	if tmp, ok := rawArgs["config"]; ok {
+		arg2, err = ec.unmarshalNRepositoryConfigToUpdate2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryConfigToUpdate(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["config"] = arg2
+	return args, nil
+}
 
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -279,6 +413,28 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_repository_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["owner"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["owner"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["name"]; ok {
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["name"] = arg1
 	return args, nil
 }
 
@@ -386,6 +542,47 @@ func (ec *executionContext) _Installation_installedRepositories(ctx context.Cont
 	return ec.marshalNRepository2ᚕᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_updateRepositoryConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updateRepositoryConfig_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateRepositoryConfig(rctx, args["owner"].(string), args["name"].(string), args["config"].(dto.RepositoryConfigToUpdate))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Organization_login(ctx context.Context, field graphql.CollectedField, obj *dto.Organization) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -452,6 +649,44 @@ func (ec *executionContext) _Query_visitor(ctx context.Context, field graphql.Co
 	res := resTmp.(*dto.Visitor)
 	fc.Result = res
 	return ec.marshalNVisitor2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐVisitor(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_repository(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_repository_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Repository(rctx, args["owner"].(string), args["name"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*dto.Repository)
+	fc.Result = res
+	return ec.marshalORepository2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepository(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -657,6 +892,139 @@ func (ec *executionContext) _Repository_owner(ctx context.Context, field graphql
 	res := resTmp.(dto.RepositoryOwner)
 	fc.Result = res
 	return ec.marshalNRepositoryOwner2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryOwner(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Repository_config(ctx context.Context, field graphql.CollectedField, obj *dto.Repository) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Repository",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Repository().Config(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*dto.RepositoryConfig)
+	fc.Result = res
+	return ec.marshalORepositoryConfig2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RepositoryConfig_startSchedule(ctx context.Context, field graphql.CollectedField, obj *dto.RepositoryConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "RepositoryConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StartSchedule, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RepositoryConfig_stopSchedule(ctx context.Context, field graphql.CollectedField, obj *dto.RepositoryConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "RepositoryConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StopSchedule, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RepositoryConfig_mergeAvailable(ctx context.Context, field graphql.CollectedField, obj *dto.RepositoryConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "RepositoryConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MergeAvailable, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_login(ctx context.Context, field graphql.CollectedField, obj *dto.User) (ret graphql.Marshaler) {
@@ -1816,6 +2184,30 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputRepositoryConfigToUpdate(ctx context.Context, obj interface{}) (dto.RepositoryConfigToUpdate, error) {
+	var it dto.RepositoryConfigToUpdate
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "startSchedule":
+			var err error
+			it.StartSchedule, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "stopSchedule":
+			var err error
+			it.StopSchedule, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -1829,8 +2221,6 @@ func (ec *executionContext) _RepositoryOwner(ctx context.Context, sel ast.Select
 			return graphql.Null
 		}
 		return ec._User(ctx, sel, obj)
-	case dto.Organization:
-		return ec._Organization(ctx, sel, &obj)
 	case *dto.Organization:
 		if obj == nil {
 			return graphql.Null
@@ -1875,6 +2265,37 @@ func (ec *executionContext) _Installation(ctx context.Context, sel ast.Selection
 				}
 				return res
 			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var mutationImplementors = []string{"Mutation"}
+
+func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mutationImplementors)
+
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Mutation",
+	})
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Mutation")
+		case "updateRepositoryConfig":
+			out.Values[i] = ec._Mutation_updateRepositoryConfig(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -1942,6 +2363,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "repository":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_repository(ctx, field)
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -1971,20 +2403,68 @@ func (ec *executionContext) _Repository(ctx context.Context, sel ast.SelectionSe
 		case "id":
 			out.Values[i] = ec._Repository_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "name":
 			out.Values[i] = ec._Repository_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "fullName":
 			out.Values[i] = ec._Repository_fullName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "owner":
 			out.Values[i] = ec._Repository_owner(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "config":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Repository_config(ctx, field, obj)
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var repositoryConfigImplementors = []string{"RepositoryConfig"}
+
+func (ec *executionContext) _RepositoryConfig(ctx context.Context, sel ast.SelectionSet, obj *dto.RepositoryConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, repositoryConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RepositoryConfig")
+		case "startSchedule":
+			out.Values[i] = ec._RepositoryConfig_startSchedule(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "stopSchedule":
+			out.Values[i] = ec._RepositoryConfig_stopSchedule(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "mergeAvailable":
+			out.Values[i] = ec._RepositoryConfig_mergeAvailable(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -2451,6 +2931,10 @@ func (ec *executionContext) marshalNRepository2ᚖgithubᚗcomᚋaerealᚋmerge�
 	return ec._Repository(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNRepositoryConfigToUpdate2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryConfigToUpdate(ctx context.Context, v interface{}) (dto.RepositoryConfigToUpdate, error) {
+	return ec.unmarshalInputRepositoryConfigToUpdate(ctx, v)
+}
+
 func (ec *executionContext) marshalNRepositoryOwner2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryOwner(ctx context.Context, sel ast.SelectionSet, v dto.RepositoryOwner) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -2736,6 +3220,28 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalORepository2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepository(ctx context.Context, sel ast.SelectionSet, v dto.Repository) graphql.Marshaler {
+	return ec._Repository(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalORepository2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepository(ctx context.Context, sel ast.SelectionSet, v *dto.Repository) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Repository(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalORepositoryConfig2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryConfig(ctx context.Context, sel ast.SelectionSet, v dto.RepositoryConfig) graphql.Marshaler {
+	return ec._RepositoryConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalORepositoryConfig2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryConfig(ctx context.Context, sel ast.SelectionSet, v *dto.RepositoryConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RepositoryConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {
