@@ -37,6 +37,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	Installation() InstallationResolver
+	Mutation() MutationResolver
 	Query() QueryResolver
 	Repository() RepositoryResolver
 	Visitor() VisitorResolver
@@ -49,6 +50,10 @@ type ComplexityRoot struct {
 	Installation struct {
 		ID                    func(childComplexity int) int
 		InstalledRepositories func(childComplexity int) int
+	}
+
+	Mutation struct {
+		UpdateRepositoryConfig func(childComplexity int, owner string, name string, config dto.RepositoryConfigToUpdate) int
 	}
 
 	Organization struct {
@@ -86,6 +91,9 @@ type ComplexityRoot struct {
 
 type InstallationResolver interface {
 	InstalledRepositories(ctx context.Context, obj *dto.Installation) ([]*dto.Repository, error)
+}
+type MutationResolver interface {
+	UpdateRepositoryConfig(ctx context.Context, owner string, name string, config dto.RepositoryConfigToUpdate) (bool, error)
 }
 type QueryResolver interface {
 	Visitor(ctx context.Context) (*dto.Visitor, error)
@@ -127,6 +135,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Installation.InstalledRepositories(childComplexity), true
+
+	case "Mutation.updateRepositoryConfig":
+		if e.complexity.Mutation.UpdateRepositoryConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateRepositoryConfig_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateRepositoryConfig(childComplexity, args["owner"].(string), args["name"].(string), args["config"].(dto.RepositoryConfigToUpdate)), true
 
 	case "Organization.login":
 		if e.complexity.Organization.Login == nil {
@@ -255,6 +275,20 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 				Data: buf.Bytes(),
 			}
 		}
+	case ast.Mutation:
+		return func(ctx context.Context) *graphql.Response {
+			if !first {
+				return nil
+			}
+			first = false
+			data := ec._Mutation(ctx, rc.Operation.SelectionSet)
+			var buf bytes.Buffer
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
+		}
 
 	default:
 		return graphql.OneShot(graphql.ErrorResponse(ctx, "unsupported GraphQL operation"))
@@ -321,6 +355,15 @@ type Query {
   visitor: Visitor!
   repository(owner: String!, name: String!): Repository
 }
+
+input RepositoryConfigToUpdate {
+  startSchedule: String
+  stopSchedule: String
+}
+
+type Mutation {
+  updateRepositoryConfig(owner: String!, name: String!, config: RepositoryConfigToUpdate!): Boolean!
+}
 `, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -328,6 +371,36 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_updateRepositoryConfig_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["owner"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["owner"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["name"]; ok {
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["name"] = arg1
+	var arg2 dto.RepositoryConfigToUpdate
+	if tmp, ok := rawArgs["config"]; ok {
+		arg2, err = ec.unmarshalNRepositoryConfigToUpdate2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryConfigToUpdate(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["config"] = arg2
+	return args, nil
+}
 
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -467,6 +540,47 @@ func (ec *executionContext) _Installation_installedRepositories(ctx context.Cont
 	res := resTmp.([]*dto.Repository)
 	fc.Result = res
 	return ec.marshalNRepository2ᚕᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_updateRepositoryConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updateRepositoryConfig_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateRepositoryConfig(rctx, args["owner"].(string), args["name"].(string), args["config"].(dto.RepositoryConfigToUpdate))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Organization_login(ctx context.Context, field graphql.CollectedField, obj *dto.Organization) (ret graphql.Marshaler) {
@@ -2070,6 +2184,30 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputRepositoryConfigToUpdate(ctx context.Context, obj interface{}) (dto.RepositoryConfigToUpdate, error) {
+	var it dto.RepositoryConfigToUpdate
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "startSchedule":
+			var err error
+			it.StartSchedule, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "stopSchedule":
+			var err error
+			it.StopSchedule, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -2127,6 +2265,37 @@ func (ec *executionContext) _Installation(ctx context.Context, sel ast.Selection
 				}
 				return res
 			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var mutationImplementors = []string{"Mutation"}
+
+func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mutationImplementors)
+
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Mutation",
+	})
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Mutation")
+		case "updateRepositoryConfig":
+			out.Values[i] = ec._Mutation_updateRepositoryConfig(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2760,6 +2929,10 @@ func (ec *executionContext) marshalNRepository2ᚖgithubᚗcomᚋaerealᚋmerge�
 		return graphql.Null
 	}
 	return ec._Repository(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNRepositoryConfigToUpdate2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryConfigToUpdate(ctx context.Context, v interface{}) (dto.RepositoryConfigToUpdate, error) {
+	return ec.unmarshalInputRepositoryConfigToUpdate(ctx, v)
 }
 
 func (ec *executionContext) marshalNRepositoryOwner2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryOwner(ctx context.Context, sel ast.SelectionSet, v dto.RepositoryOwner) graphql.Marshaler {

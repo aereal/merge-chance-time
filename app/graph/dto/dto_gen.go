@@ -7,3 +7,8 @@ type RepositoryConfig struct {
 	StopSchedule   string `json:"stopSchedule"`
 	MergeAvailable bool   `json:"mergeAvailable"`
 }
+
+type RepositoryConfigToUpdate struct {
+	StartSchedule *string `json:"startSchedule"`
+	StopSchedule  *string `json:"stopSchedule"`
+}

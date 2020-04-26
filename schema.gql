@@ -38,3 +38,12 @@ type Query {
   visitor: Visitor!
   repository(owner: String!, name: String!): Repository
 }
+
+input RepositoryConfigToUpdate {
+  startSchedule: String
+  stopSchedule: String
+}
+
+type Mutation {
+  updateRepositoryConfig(owner: String!, name: String!, config: RepositoryConfigToUpdate!): Boolean!
+}

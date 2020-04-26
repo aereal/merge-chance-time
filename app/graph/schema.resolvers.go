@@ -5,9 +5,11 @@ package graph
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aereal/merge-chance-time/app/graph/dto"
 	"github.com/aereal/merge-chance-time/app/graph/generated"
+	"github.com/aereal/merge-chance-time/domain/model"
 	"github.com/aereal/merge-chance-time/domain/repo"
 )
 
@@ -27,6 +29,60 @@ func (r *installationResolver) InstalledRepositories(ctx context.Context, obj *d
 		repos[i] = dto.NewRepositoryFromResponse(r)
 	}
 	return repos, nil
+}
+
+func (r *mutationResolver) UpdateRepositoryConfig(ctx context.Context, owner string, name string, config dto.RepositoryConfigToUpdate) (bool, error) {
+	_, err := r.authorizer.GetCurrentClaims(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	current, err := r.repo.GetRepositoryConfig(ctx, owner, name)
+	if err == repo.ErrNotFound {
+		current = &model.RepositoryConfig{}
+	}
+	if err != nil {
+		return false, err
+	}
+
+	var (
+		start      = current.StartSchedule
+		stop       = current.StopSchedule
+		updatedAny = false
+	)
+
+	if config.StartSchedule != nil {
+		if err := start.UnmarshalText([]byte(*config.StartSchedule)); err != nil {
+			return false, err
+		}
+		updatedAny = true
+	}
+
+	if config.StopSchedule != nil {
+		if err := stop.UnmarshalText([]byte(*config.StopSchedule)); err != nil {
+			return false, err
+		}
+		updatedAny = true
+	}
+
+	if !updatedAny {
+		return false, fmt.Errorf("update request is empty")
+	}
+
+	cfgs := []*model.RepositoryConfig{
+		{
+			Owner:          owner,
+			Name:           name,
+			StartSchedule:  start,
+			StopSchedule:   stop,
+			MergeAvailable: current.MergeAvailable,
+		},
+	}
+	if err := r.repo.PutRepositoryConfigs(ctx, cfgs); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (r *queryResolver) Visitor(ctx context.Context) (*dto.Visitor, error) {
@@ -100,6 +156,9 @@ func (r *visitorResolver) Installations(ctx context.Context, obj *dto.Visitor) (
 // Installation returns generated.InstallationResolver implementation.
 func (r *Resolver) Installation() generated.InstallationResolver { return &installationResolver{r} }
 
+// Mutation returns generated.MutationResolver implementation.
+func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
+
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
@@ -110,6 +169,7 @@ func (r *Resolver) Repository() generated.RepositoryResolver { return &repositor
 func (r *Resolver) Visitor() generated.VisitorResolver { return &visitorResolver{r} }
 
 type installationResolver struct{ *Resolver }
+type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type repositoryResolver struct{ *Resolver }
 type visitorResolver struct{ *Resolver }
