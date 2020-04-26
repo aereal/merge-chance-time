@@ -6,7 +6,6 @@ import { Route } from "type-route"
 import { DefaultAuthenticationProvider } from "./effects/authentication"
 import { DefaultApolloClientProvider } from "./providers/apollo-client"
 import { routes, getCurrentRoute, listen } from "./routes"
-import { RootPage } from "./pages/RootPage"
 import { SignInPage } from "./pages/SignInPage"
 import { CallbackPage } from "./pages/CallbackPage"
 import { ListReposPage } from "./pages/ListReposPage"
@@ -22,11 +21,9 @@ const Routing: FC<RoutingProps> = ({ route }) => {
     case routes.signIn.name:
       return <SignInPage />
     case routes.root.name:
-      return <RootPage />
+      return <ListReposPage />
     case routes.authCallback.name:
       return <CallbackPage />
-    case routes.listRepos.name:
-      return <ListReposPage />
     case routes.repoDetail.name:
       return <RepoDetailPage params={route.params} />
     case routes.token.name:
