@@ -2,6 +2,7 @@ import React, { FC } from "react"
 import Grid from "@material-ui/core/Grid"
 import Typography from "@material-ui/core/Typography"
 import makeStyles from "@material-ui/core/styles/makeStyles"
+import LinearProgress from "@material-ui/core/LinearProgress"
 import gql from "graphql-tag"
 import { useQuery } from "@apollo/react-hooks"
 import { ReposList } from "../components/ReposList"
@@ -29,24 +30,24 @@ const useStyles = makeStyles((theme) => ({
 }))
 
 export const ListReposPage: FC = () => {
-  const { root } = useStyles()
   const { loading, error, data } = useQuery<GetInstalledRepos>(GET_INSTALLED_REPOS)
-  if (loading) {
-    return <>Loading ...</>
-  }
-  if (error) {
-    return <>Error: {JSON.stringify(error)}</>
-  }
-  if (!data) {
-    return null
-  }
-  const repos = data.visitor.installations.flatMap((inst) => inst.installedRepositories)
   return (
     <Grid item xs={12}>
+      {loading && <LinearProgress />}
+      {error && <>Error: {JSON.stringify(error)}</>}
+      {data && <ListReposPageContent {...data} />}
+    </Grid>
+  )
+}
+
+const ListReposPageContent: FC<GetInstalledRepos> = (data) => {
+  const { root } = useStyles()
+  return (
+    <>
       <Typography variant="subtitle1">List Repos</Typography>
       <div className={root}>
-        <ReposList repos={repos} />
+        <ReposList repos={data.visitor.installations.flatMap((inst) => inst.installedRepositories)} />
       </div>
-    </Grid>
+    </>
   )
 }

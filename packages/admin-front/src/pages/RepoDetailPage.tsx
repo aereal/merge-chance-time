@@ -2,6 +2,7 @@ import React, { FC } from "react"
 import { Route } from "type-route"
 import Grid from "@material-ui/core/Grid"
 import Typography from "@material-ui/core/Typography"
+import LinearProgress from "@material-ui/core/LinearProgress"
 import gql from "graphql-tag"
 import { useQuery } from "@apollo/react-hooks"
 import { routes } from "../routes"
@@ -28,21 +29,28 @@ export const RepoDetailPage: FC<RepoDetailPageProps> = ({ params }) => {
       name: params.name,
     },
   })
-  if (loading) {
-    return <>Loading ...</>
-  }
-  if (error) {
-    return <>Error: {JSON.stringify(error)}</>
-  }
-  if (!data || !data.repository) {
-    return null
-  }
   return (
     <Grid item xs={12}>
-      <Typography variant="subtitle1">
-        {data.repository.owner.login}/{data.repository.name}
-      </Typography>
-      <RepoDetail repo={data.repository} />
+      {loading && <LinearProgress />}
+      {error !== undefined && <>Error: {JSON.stringify(error)}</>}
+      {data && <RepoDetailPageContent {...data} />}
     </Grid>
+  )
+}
+
+const RepoDetailPageContent: FC<GetRepoDetail> = ({ repository }) => {
+  return (
+    <>
+      {repository ? (
+        <>
+          <Typography variant="subtitle1">
+            {repository.owner.login}/{repository.name}
+          </Typography>
+          <RepoDetail repo={repository} />
+        </>
+      ) : (
+        <>Not Found</>
+      )}
+    </>
   )
 }
