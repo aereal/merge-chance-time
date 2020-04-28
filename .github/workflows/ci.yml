@@ -48,6 +48,7 @@ jobs:
           GH_APP_CLIENT_ID: ${{ secrets.GH_APP_CLIENT_ID }}
           GH_APP_CLIENT_SECRET: ${{ secrets.GH_APP_CLIENT_SECRET }}
           GH_APP_IDENTIFIER: ${{ secrets.GH_APP_IDENTIFIER }}
+          ADMIN_ORIGIN: 'https://mergechancetime.app'
       - name: export private key
         run: |
           echo "${{ secrets.GH_APP_PRIVATE_KEY }}" > ./github-app.private-key.pem
