@@ -12,6 +12,7 @@ import (
 	"github.com/aereal/merge-chance-time/usecase"
 	"github.com/dimfeld/httptreemux/v5"
 	"github.com/google/go-github/v30/github"
+	"golang.org/x/sync/errgroup"
 )
 
 type PubSubPayload struct {
@@ -141,6 +142,10 @@ func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	logger.Infof("webhook payload = %#v", payload)
 
 	switch p := payload.(type) {
+	case *github.InstallationEvent:
+		c.onInstallation(w, r, p)
+	case *github.InstallationRepositoriesEvent:
+		c.onRepositoryInstallation(w, r, p)
 	case *github.PullRequestEvent:
 		c.onPullRequest(w, r, p)
 	default:
@@ -174,4 +179,62 @@ func (c *Web) onPullRequest(w http.ResponseWriter, r *http.Request, payload *git
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (c *Web) onInstallation(w http.ResponseWriter, r *http.Request, payload *github.InstallationEvent) {
+	ctx := r.Context()
+	logger := logging.GetLogger(ctx)
+	logger.Infof("Installation Event: %#v", payload)
+
+	switch payload.GetAction() {
+	case "created":
+		eg, ctx := errgroup.WithContext(ctx)
+		for _, repo := range payload.Repositories {
+			eg.Go(func() error {
+				return c.usecase.OnInstallRepository(ctx, repo)
+			})
+		}
+		if err := eg.Wait(); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("content-type", "application/json")
+			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	case "deleted":
+		// skip
+	default:
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.Header().Set("content-type", "application/json")
+		json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("Unknown action: %q", payload.GetAction())})
+	}
+}
+
+func (c *Web) onRepositoryInstallation(w http.ResponseWriter, r *http.Request, payload *github.InstallationRepositoriesEvent) {
+	ctx := r.Context()
+	logger := logging.GetLogger(ctx)
+	logger.Infof("Installation repositories Event: %#v", payload)
+
+	switch payload.GetAction() {
+	case "added":
+		eg, ctx := errgroup.WithContext(ctx)
+		for _, repo := range payload.RepositoriesAdded {
+			eg.Go(func() error {
+				return c.usecase.OnInstallRepository(ctx, repo)
+			})
+		}
+		if err := eg.Wait(); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("content-type", "application/json")
+			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	case "removed":
+		// no-op
+	default:
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.Header().Set("content-type", "application/json")
+		json.NewEncoder(w).Encode(struct{ Error string }{fmt.Sprintf("Unknown action: %q", payload.GetAction())})
+	}
 }
