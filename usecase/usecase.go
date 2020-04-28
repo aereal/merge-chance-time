@@ -36,6 +36,13 @@ type Usecase struct {
 	repo *repo.Repository
 }
 
+func (u *Usecase) OnDeleteAppFromOwner(ctx context.Context, owner string) error {
+	if err := u.repo.DeleteRepositoryConfigsByOwner(ctx, owner); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (u *Usecase) OnRemoveRepositories(ctx context.Context, repos []*github.Repository) error {
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, r := range repos {

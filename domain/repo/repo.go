@@ -37,6 +37,14 @@ func (r *Repository) DeleteRepositoryConfig(ctx context.Context, owner, name str
 	return nil
 }
 
+func (r *Repository) DeleteRepositoryConfigsByOwner(ctx context.Context, owner string) error {
+	_, err := r.firestoreClient.Collection("InstallationTarget").Doc(owner).Delete(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *Repository) PutRepositoryConfigs(ctx context.Context, configs []*model.RepositoryConfig) error {
 	dtos := []*dtoRepositoryConfig{}
 	for _, config := range configs {
