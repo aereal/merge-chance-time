@@ -112,6 +112,32 @@ func TestRepositoryConfig_timeHasCome(t *testing.T) {
 	}
 }
 
+func TestCronSchedule_String(t *testing.T) {
+	tests := []struct {
+		name     string
+		schedule *CronSchedule
+		want     string
+	}{
+		{
+			name:     "nil",
+			schedule: nil,
+			want:     "",
+		},
+		{
+			name:     "ok",
+			schedule: mustParseSchedule("* * * *"),
+			want:     "* * * *",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.schedule.String(); got != tt.want {
+				t.Errorf("CronSchedule.String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func mustParseTime(repr string) time.Time {
 	t, err := time.Parse(time.RFC3339, repr)
 	if err != nil {
@@ -121,7 +147,7 @@ func mustParseTime(repr string) time.Time {
 }
 
 func mustParseSchedule(repr string) *CronSchedule {
-	parsed, err := parser.Parse(repr)
+	parsed, err := cronParser.Parse(repr)
 	if err != nil {
 		panic(err)
 	}
