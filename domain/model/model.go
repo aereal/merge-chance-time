@@ -13,6 +13,9 @@ type CronSchedule struct {
 }
 
 func (s *CronSchedule) Next(t time.Time) time.Time {
+	if s == nil {
+		return time.Time{}
+	}
 	return s.Spec.Next(t)
 }
 
