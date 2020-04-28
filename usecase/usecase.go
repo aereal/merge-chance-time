@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
@@ -33,6 +34,35 @@ func New(repo *repo.Repository) (*Usecase, error) {
 
 type Usecase struct {
 	repo *repo.Repository
+}
+
+func (u *Usecase) OnInstallRepositories(ctx context.Context, repos []*github.Repository) error {
+	eg, ctx := errgroup.WithContext(ctx)
+	for _, r := range repos {
+		eg.Go(func() error {
+			return u.onInstallRepository(ctx, r)
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *Usecase) onInstallRepository(ctx context.Context, installedRepo *github.Repository) error {
+	logger := logging.GetLogger(ctx)
+	logger.Infof("install repository: %#v", installedRepo)
+	parts := strings.Split(installedRepo.GetFullName(), "/")
+	if len(parts) < 2 {
+		return fmt.Errorf("invalid repo fullName")
+	}
+	return u.repo.PutRepositoryConfigs(ctx, []*model.RepositoryConfig{
+		{
+			Owner:          parts[0],
+			Name:           parts[1],
+			MergeAvailable: true,
+		},
+	})
 }
 
 func (u *Usecase) PutRepositoryConfig(ctx context.Context, ghAppClient *github.Client, owner, name string, input io.Reader) error {

@@ -13,16 +13,22 @@ type CronSchedule struct {
 }
 
 func (s *CronSchedule) Next(t time.Time) time.Time {
+	if s == nil {
+		return time.Time{}
+	}
 	return s.Spec.Next(t)
 }
 
 func (s *CronSchedule) String() string {
+	if s == nil {
+		return ""
+	}
 	return s.Repr
 }
 
 func (s *CronSchedule) UnmarshalText(text []byte) error {
 	repr := string(text)
-	parsed, err := parser.Parse(repr)
+	parsed, err := cronParser.Parse(repr)
 	if err != nil {
 		return err
 	}
@@ -57,7 +63,7 @@ type RepositoryConfig struct {
 }
 
 var (
-	parser       = cron.NewParser(cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	cronParser   = cron.NewParser(cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	baseDuration = time.Hour
 
 	NowFunc = time.Now
