@@ -36,7 +36,20 @@ type Usecase struct {
 	repo *repo.Repository
 }
 
-func (u *Usecase) OnInstallRepository(ctx context.Context, installedRepo *github.Repository) error {
+func (u *Usecase) OnInstallRepositories(ctx context.Context, repos []*github.Repository) error {
+	eg, ctx := errgroup.WithContext(ctx)
+	for _, r := range repos {
+		eg.Go(func() error {
+			return u.onInstallRepository(ctx, r)
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *Usecase) onInstallRepository(ctx context.Context, installedRepo *github.Repository) error {
 	logger := logging.GetLogger(ctx)
 	logger.Infof("install repository: %#v", installedRepo)
 	parts := strings.Split(installedRepo.GetFullName(), "/")

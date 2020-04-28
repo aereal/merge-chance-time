@@ -12,7 +12,6 @@ import (
 	"github.com/aereal/merge-chance-time/usecase"
 	"github.com/dimfeld/httptreemux/v5"
 	"github.com/google/go-github/v30/github"
-	"golang.org/x/sync/errgroup"
 )
 
 type PubSubPayload struct {
@@ -188,13 +187,8 @@ func (c *Web) onInstallation(w http.ResponseWriter, r *http.Request, payload *gi
 
 	switch payload.GetAction() {
 	case "created":
-		eg, ctx := errgroup.WithContext(ctx)
-		for _, repo := range payload.Repositories {
-			eg.Go(func() error {
-				return c.usecase.OnInstallRepository(ctx, repo)
-			})
-		}
-		if err := eg.Wait(); err != nil {
+		err := c.usecase.OnInstallRepositories(ctx, payload.Repositories)
+		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("content-type", "application/json")
 			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
@@ -217,13 +211,8 @@ func (c *Web) onRepositoryInstallation(w http.ResponseWriter, r *http.Request, p
 
 	switch payload.GetAction() {
 	case "added":
-		eg, ctx := errgroup.WithContext(ctx)
-		for _, repo := range payload.RepositoriesAdded {
-			eg.Go(func() error {
-				return c.usecase.OnInstallRepository(ctx, repo)
-			})
-		}
-		if err := eg.Wait(); err != nil {
+		err := c.usecase.OnInstallRepositories(ctx, payload.RepositoriesAdded)
+		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("content-type", "application/json")
 			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
