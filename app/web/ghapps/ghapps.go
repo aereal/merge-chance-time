@@ -115,6 +115,13 @@ func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := logging.GetLogger(ctx)
 
+	webhookType := github.WebHookType(r)
+	if webhookType == "integration_installation" || webhookType == "integration_installation_repositories" {
+		// skip old webhook type
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	payloadBytes, err := github.ValidatePayload(r, c.githubWebhookSecret)
 	if err != nil {
 		err = fmt.Errorf("failed to validate incoming payload: %w", err)
@@ -124,7 +131,7 @@ func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger.Infof("webhook request body = %s", string(payloadBytes))
-	payload, err := github.ParseWebHook(github.WebHookType(r), payloadBytes)
+	payload, err := github.ParseWebHook(webhookType, payloadBytes)
 	if err != nil {
 		err = fmt.Errorf("failed to parse incoming payload: %w", err)
 		logger.Error(err)
