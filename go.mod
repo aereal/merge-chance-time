@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-sdk-go v1.30.10 // indirect
 	github.com/bradleyfalzon/ghinstallation v1.1.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/dimfeld/httptreemux/v5 v5.2.1
+	github.com/dimfeld/httptreemux/v5 v5.2.2
 	github.com/golang/protobuf v1.4.0 // indirect
 	github.com/google/go-github/v29 v29.0.3 // indirect
 	github.com/google/go-github/v30 v30.1.0
