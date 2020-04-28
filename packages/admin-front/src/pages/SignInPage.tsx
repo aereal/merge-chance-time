@@ -4,6 +4,7 @@ import Button from "@material-ui/core/Button"
 import makeStyles from "@material-ui/core/styles/makeStyles"
 import Avatar from "@material-ui/core/Avatar"
 import LockOutlinedIcon from "@material-ui/icons/LockOutlined"
+import { Helmet } from "react-helmet"
 import { apiOrigin } from "../api-origin"
 
 const useStyles = makeStyles((theme) => ({
@@ -35,6 +36,9 @@ export const SignInPage: FC = () => {
 
   return (
     <>
+      <Helmet>
+        <title>Sign In - Merge Chance Time</title>
+      </Helmet>
       <Grid item xs={12}>
         <div className={classes.paper}>
           <Avatar className={classes.paper}>

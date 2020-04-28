@@ -5,6 +5,7 @@ import makeStyles from "@material-ui/core/styles/makeStyles"
 import LinearProgress from "@material-ui/core/LinearProgress"
 import gql from "graphql-tag"
 import { useQuery } from "@apollo/react-hooks"
+import { Helmet } from "react-helmet"
 import { ReposList } from "../components/ReposList"
 import { REPO_SUMMARY } from "../components/RepoSummary"
 import { GetInstalledRepos } from "./__generated__/GetInstalledRepos"
@@ -32,11 +33,16 @@ const useStyles = makeStyles((theme) => ({
 export const ListReposPage: FC = () => {
   const { loading, error, data } = useQuery<GetInstalledRepos>(GET_INSTALLED_REPOS)
   return (
-    <Grid item xs={12}>
-      {loading && <LinearProgress />}
-      {error && <>Error: {JSON.stringify(error)}</>}
-      {data && <ListReposPageContent {...data} />}
-    </Grid>
+    <>
+      <Helmet>
+        <title>Repos - Merge Chance Time</title>
+      </Helmet>
+      <Grid item xs={12}>
+        {loading && <LinearProgress />}
+        {error && <>Error: {JSON.stringify(error)}</>}
+        {data && <ListReposPageContent {...data} />}
+      </Grid>
+    </>
   )
 }
 

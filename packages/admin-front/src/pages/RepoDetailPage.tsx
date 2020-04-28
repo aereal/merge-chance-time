@@ -5,6 +5,7 @@ import Typography from "@material-ui/core/Typography"
 import LinearProgress from "@material-ui/core/LinearProgress"
 import gql from "graphql-tag"
 import { useQuery } from "@apollo/react-hooks"
+import { Helmet } from "react-helmet"
 import { routes } from "../routes"
 import { GetRepoDetail, GetRepoDetailVariables } from "./__generated__/GetRepoDetail"
 import { RepoDetail, REPO_DETAIL_FRAGMENT } from "../components/RepoDetail"
@@ -30,11 +31,18 @@ export const RepoDetailPage: FC<RepoDetailPageProps> = ({ params }) => {
     },
   })
   return (
-    <Grid item xs={12}>
-      {loading && <LinearProgress />}
-      {error !== undefined && <>Error: {JSON.stringify(error)}</>}
-      {data && <RepoDetailPageContent {...data} />}
-    </Grid>
+    <>
+      <Helmet>
+        <title>
+          {params.owner}/{params.name} - Merge Chance Time
+        </title>
+      </Helmet>
+      <Grid item xs={12}>
+        {loading && <LinearProgress />}
+        {error !== undefined && <>Error: {JSON.stringify(error)}</>}
+        {data && <RepoDetailPageContent {...data} />}
+      </Grid>
+    </>
   )
 }
 
