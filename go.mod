@@ -27,6 +27,6 @@ require (
 	golang.org/x/tools v0.0.0-20200421042724-cfa8b22178d2 // indirect
 	google.golang.org/api v0.22.0
 	google.golang.org/genproto v0.0.0-20200420144010-e5e8543f8aeb // indirect
-	google.golang.org/grpc v1.28.1
+	google.golang.org/grpc v1.29.1
 	gopkg.in/square/go-jose.v2 v2.5.0
 )
