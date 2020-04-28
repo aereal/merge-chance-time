@@ -28,6 +28,15 @@ type Repository struct {
 	firestoreClient *firestore.Client
 }
 
+func (r *Repository) DeleteRepositoryConfig(ctx context.Context, owner, name string) error {
+	ref := r.firestoreClient.Collection("InstallationTarget").Doc(owner).Collection("Repository").Doc(name)
+	_, err := ref.Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete repo %s/%s: %w", owner, name, err)
+	}
+	return nil
+}
+
 func (r *Repository) PutRepositoryConfigs(ctx context.Context, configs []*model.RepositoryConfig) error {
 	dtos := []*dtoRepositoryConfig{}
 	for _, config := range configs {
