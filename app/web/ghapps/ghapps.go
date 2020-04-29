@@ -196,7 +196,14 @@ func (c *Web) onInstallation(w http.ResponseWriter, r *http.Request, payload *gi
 		}
 		w.WriteHeader(http.StatusNoContent)
 	case "deleted":
-		// skip
+		err := c.usecase.OnDeleteAppFromOwner(ctx, payload.GetInstallation().GetAccount().GetLogin())
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("content-type", "application/json")
+			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	default:
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		w.Header().Set("content-type", "application/json")
@@ -220,7 +227,14 @@ func (c *Web) onRepositoryInstallation(w http.ResponseWriter, r *http.Request, p
 		}
 		w.WriteHeader(http.StatusNoContent)
 	case "removed":
-		// no-op
+		err := c.usecase.OnRemoveRepositories(ctx, payload.RepositoriesRemoved)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("content-type", "application/json")
+			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	default:
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		w.Header().Set("content-type", "application/json")

@@ -36,6 +36,34 @@ type Usecase struct {
 	repo *repo.Repository
 }
 
+func (u *Usecase) OnDeleteAppFromOwner(ctx context.Context, owner string) error {
+	if err := u.repo.DeleteRepositoryConfigsByOwner(ctx, owner); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *Usecase) OnRemoveRepositories(ctx context.Context, repos []*github.Repository) error {
+	eg, ctx := errgroup.WithContext(ctx)
+	for _, r := range repos {
+		eg.Go(func() error {
+			return u.onRemoveRepository(ctx, r)
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *Usecase) onRemoveRepository(ctx context.Context, removedRepo *github.Repository) error {
+	parts := strings.Split(removedRepo.GetFullName(), "/")
+	if len(parts) < 2 {
+		return fmt.Errorf("invalid repo fullName")
+	}
+	return u.repo.DeleteRepositoryConfig(ctx, parts[0], parts[1])
+}
+
 func (u *Usecase) OnInstallRepositories(ctx context.Context, repos []*github.Repository) error {
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, r := range repos {
