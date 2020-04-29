@@ -40,14 +40,12 @@ const App: FC = () => {
   return (
     <>
       <CssBaseline />
-      <Container maxWidth="md">
-        <Grid container>
-          <DefaultAuthenticationProvider>
-            <DefaultApolloClientProvider>
-              <Routing route={route} />
-            </DefaultApolloClientProvider>
-          </DefaultAuthenticationProvider>
-        </Grid>
+      <Container component="main" maxWidth="md">
+        <DefaultAuthenticationProvider>
+          <DefaultApolloClientProvider>
+            <Routing route={route} />
+          </DefaultApolloClientProvider>
+        </DefaultAuthenticationProvider>
       </Container>
     </>
   )
