@@ -92,6 +92,7 @@ func (c *Web) handleCron() http.HandlerFunc {
 		if payload.Message == nil {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			w.Header().Set("content-type", "application/json")
+			logger.Warn("Invalid payload format")
 			json.NewEncoder(w).Encode(struct{ Error string }{"Invalid payload format"})
 			return
 		}
@@ -103,6 +104,7 @@ func (c *Web) handleCron() http.HandlerFunc {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("content-type", "application/json")
+			logger.Error(fmt.Sprintf("%+v", err))
 			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
 			return
 		}
