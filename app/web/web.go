@@ -16,16 +16,18 @@ type Handler func(router *httptreemux.TreeMux)
 
 func New(onGAE bool, cfg *config.Config, handlers ...Handler) *Web {
 	return &Web{
-		onGAE:     onGAE,
-		projectID: cfg.GCPProjectID,
-		handlers:  handlers,
+		onGAE:       onGAE,
+		projectID:   cfg.GCPProjectID,
+		handlers:    handlers,
+		adminOrigin: cfg.AdminOrigin.String(),
 	}
 }
 
 type Web struct {
-	onGAE     bool
-	projectID string
-	handlers  []Handler
+	onGAE       bool
+	projectID   string
+	handlers    []Handler
+	adminOrigin string
 }
 
 func (w *Web) Server(port string) *http.Server {
@@ -51,9 +53,7 @@ func (w *Web) Server(port string) *http.Server {
 func (w *Web) handler() http.Handler {
 	router := httptreemux.New()
 	mw := cors.New(cors.Options{
-		AllowOriginFunc: func(origin string) bool {
-			return true
-		},
+		AllowedOrigins: []string{w.adminOrigin},
 		AllowedMethods: []string{
 			http.MethodHead,
 			http.MethodGet,
@@ -64,7 +64,6 @@ func (w *Web) handler() http.Handler {
 		},
 		AllowCredentials: true,
 		AllowedHeaders:   []string{"*"},
-		Debug:            true,
 	})
 	router.UseHandler(logging.WithLogger(w.projectID))
 	router.UseHandler(mw.Handler)
