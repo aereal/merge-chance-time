@@ -92,7 +92,7 @@ func (c *Web) handleCron() http.HandlerFunc {
 		}
 		span := trace.FromContext(ctx)
 		if span != nil {
-			span.AddAttributes(trace.StringAttribute("google_pub_sub/subscription", payload.Subscription))
+			span.AddAttributes(trace.StringAttribute("/google_pub_sub/subscription", payload.Subscription))
 		}
 
 		if payload.Message == nil {
@@ -103,7 +103,7 @@ func (c *Web) handleCron() http.HandlerFunc {
 			return
 		}
 		if span != nil {
-			span.AddAttributes(trace.StringAttribute("google_pub_sub/message/id", payload.Message.ID))
+			span.AddAttributes(trace.StringAttribute("/google_pub_sub/message/id", payload.Message.ID))
 		}
 
 		logger.Infof("payload.subscription=%q payload.message.id=%q publishTime=%q data=%q", payload.Subscription, payload.Message.ID, payload.Message.PublishTime, string(payload.Message.Data))
@@ -130,8 +130,8 @@ func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	webhookType := github.WebHookType(r)
 	if span != nil {
 		span.AddAttributes(
-			trace.StringAttribute("github/webhook/type", webhookType),
-			trace.StringAttribute("github/webhook/delivery", r.Header.Get("x-github-delivery")),
+			trace.StringAttribute("/github/webhook/type", webhookType),
+			trace.StringAttribute("/github/webhook/delivery", r.Header.Get("x-github-delivery")),
 		)
 	}
 	if webhookType == "integration_installation" || webhookType == "integration_installation_repositories" {
