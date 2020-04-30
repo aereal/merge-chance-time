@@ -12,6 +12,7 @@ import (
 	"github.com/aereal/merge-chance-time/usecase"
 	"github.com/dimfeld/httptreemux/v5"
 	"github.com/google/go-github/v30/github"
+	"go.opencensus.io/trace"
 )
 
 type PubSubPayload struct {
@@ -89,12 +90,20 @@ func (c *Web) handleCron() http.HandlerFunc {
 			fmt.Fprintf(w, "cannot read request: %+v\n", err)
 			return
 		}
+		span := trace.FromContext(ctx)
+		if span != nil {
+			span.AddAttributes(trace.StringAttribute("google_pub_sub/subscription", payload.Subscription))
+		}
+
 		if payload.Message == nil {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			w.Header().Set("content-type", "application/json")
 			logger.Warn("Invalid payload format")
 			json.NewEncoder(w).Encode(struct{ Error string }{"Invalid payload format"})
 			return
+		}
+		if span != nil {
+			span.AddAttributes(trace.StringAttribute("google_pub_sub/message/id", payload.Message.ID))
 		}
 
 		logger.Infof("payload.subscription=%q payload.message.id=%q publishTime=%q data=%q", payload.Subscription, payload.Message.ID, payload.Message.PublishTime, string(payload.Message.Data))
@@ -116,8 +125,15 @@ func (c *Web) handleCron() http.HandlerFunc {
 func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := logging.GetLogger(ctx)
+	span := trace.FromContext(ctx)
 
 	webhookType := github.WebHookType(r)
+	if span != nil {
+		span.AddAttributes(
+			trace.StringAttribute("github/webhook/type", webhookType),
+			trace.StringAttribute("github/webhook/delivery", r.Header.Get("x-github-delivery")),
+		)
+	}
 	if webhookType == "integration_installation" || webhookType == "integration_installation_repositories" {
 		// skip old webhook type
 		w.WriteHeader(http.StatusNoContent)
