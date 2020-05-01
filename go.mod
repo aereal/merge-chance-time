@@ -28,5 +28,5 @@ require (
 	google.golang.org/api v0.22.0
 	google.golang.org/genproto v0.0.0-20200420144010-e5e8543f8aeb // indirect
 	google.golang.org/grpc v1.29.1
-	gopkg.in/square/go-jose.v2 v2.5.0
+	gopkg.in/square/go-jose.v2 v2.5.1
 )
