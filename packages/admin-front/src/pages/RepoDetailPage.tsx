@@ -7,8 +7,8 @@ import gql from "graphql-tag"
 import { useQuery } from "@apollo/react-hooks"
 import { Helmet } from "react-helmet"
 import { routes } from "../routes"
-import { GetRepoDetail, GetRepoDetailVariables } from "./__generated__/GetRepoDetail"
 import { RepoDetail, REPO_DETAIL_FRAGMENT } from "../components/RepoDetail"
+import { GetRepoDetail, GetRepoDetailVariables } from "./__generated__/GetRepoDetail"
 
 const GET_REPO_DETAIL = gql`
   query GetRepoDetail($owner: String!, $name: String!) {

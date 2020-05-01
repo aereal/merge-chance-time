@@ -4,11 +4,11 @@ import Grid from "@material-ui/core/Grid"
 import makeStyles from "@material-ui/core/styles/makeStyles"
 import gql from "graphql-tag"
 import { useMutation } from "@apollo/react-hooks"
+import { useFetchState } from "../effects/fetch-state"
 import { RepoDetailFragment } from "./__generated__/RepoDetailFragment"
 import { UpdateRepoConfig, UpdateRepoConfigVariables } from "./__generated__/UpdateRepoConfig"
 import { PrimaryButton } from "./PrimaryButton"
 import { ErrorNotification, SuccessNotification } from "./Notification"
-import { useFetchState } from "../effects/fetch-state"
 
 export const REPO_DETAIL_FRAGMENT = gql`
   fragment RepoDetailFragment on Repository {

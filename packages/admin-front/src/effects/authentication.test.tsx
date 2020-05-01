@@ -8,8 +8,8 @@ jest.mock("../local-storage", () => {
 })
 
 import { renderHook } from "@testing-library/react-hooks"
-import { useAuthentication } from "./authentication"
 import { isUnauthenticated, isSignedIn } from "../auth"
+import { useAuthentication } from "./authentication"
 
 describe("useAuthentication", () => {
   test("ok", () => {
