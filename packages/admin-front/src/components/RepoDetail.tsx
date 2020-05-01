@@ -9,6 +9,7 @@ import { RepoDetailFragment } from "./__generated__/RepoDetailFragment"
 import { UpdateRepoConfig, UpdateRepoConfigVariables } from "./__generated__/UpdateRepoConfig"
 import { PrimaryButton } from "./PrimaryButton"
 import { ErrorNotification, SuccessNotification } from "./Notification"
+import { ScheduleRange } from "./ScheduleRange"
 
 export const REPO_DETAIL_FRAGMENT = gql`
   fragment RepoDetailFragment on Repository {
@@ -85,14 +86,7 @@ export const RepoDetail: FC<RepoDetailProps> = ({ repo }) => {
   return (
     <>
       <form noValidate onSubmit={handleSubmit}>
-        <Grid container spacing={2}>
-          <Grid item md>
-            <TextField label="Start schedule" value={startSchedule} onChange={handleChangeStart} />
-          </Grid>
-          <Grid item md>
-            <TextField label="Stop schedule" value={stopSchedule} onChange={handleChangeStop} />
-          </Grid>
-        </Grid>
+        <ScheduleRange />
         <div className={classes.actions}>
           <PrimaryButton disabled={fetchState.kind === "started"} type="submit">
             Save
