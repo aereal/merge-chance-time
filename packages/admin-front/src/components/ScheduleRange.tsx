@@ -28,10 +28,9 @@ export const ScheduleRange: FC = () => {
   })
 
   const sliderHandler = (weekday: Weekday): OnUpdateValue => (value) => {
-    const [from, to] = normalizeValues(value)
     setSchedules((prev) => ({
       ...prev,
-      [weekday]: [from, to],
+      [weekday]: value === null ? null : normalizeValues(value),
     }))
   }
   const handlers = weekdays.reduce(

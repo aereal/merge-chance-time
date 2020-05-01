@@ -6,7 +6,7 @@ import indigo from "@material-ui/core/colors/indigo"
 import makeStyles from "@material-ui/core/styles/makeStyles"
 import { Weekday, sunday, saturday } from "../schedule"
 
-export type OnUpdateValue = (value: number | number[]) => void
+export type OnUpdateValue = (value: number | number[] | null) => void
 export type MergeChanceScheduleRange = [number, number]
 
 interface WeekdayRangeSliderProps {
