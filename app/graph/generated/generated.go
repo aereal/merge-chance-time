@@ -52,6 +52,21 @@ type ComplexityRoot struct {
 		InstalledRepositories func(childComplexity int) int
 	}
 
+	MergeChanceSchedule struct {
+		StartHour func(childComplexity int) int
+		StopHour  func(childComplexity int) int
+	}
+
+	MergeChanceSchedules struct {
+		Friday    func(childComplexity int) int
+		Monday    func(childComplexity int) int
+		Saturday  func(childComplexity int) int
+		Sunday    func(childComplexity int) int
+		Thursday  func(childComplexity int) int
+		Tuesday   func(childComplexity int) int
+		Wednesday func(childComplexity int) int
+	}
+
 	Mutation struct {
 		UpdateRepositoryConfig func(childComplexity int, owner string, name string, config dto.RepositoryConfigToUpdate) int
 	}
@@ -75,8 +90,7 @@ type ComplexityRoot struct {
 
 	RepositoryConfig struct {
 		MergeAvailable func(childComplexity int) int
-		StartSchedule  func(childComplexity int) int
-		StopSchedule   func(childComplexity int) int
+		Schedules      func(childComplexity int) int
 	}
 
 	User struct {
@@ -135,6 +149,69 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Installation.InstalledRepositories(childComplexity), true
+
+	case "MergeChanceSchedule.startHour":
+		if e.complexity.MergeChanceSchedule.StartHour == nil {
+			break
+		}
+
+		return e.complexity.MergeChanceSchedule.StartHour(childComplexity), true
+
+	case "MergeChanceSchedule.stopHour":
+		if e.complexity.MergeChanceSchedule.StopHour == nil {
+			break
+		}
+
+		return e.complexity.MergeChanceSchedule.StopHour(childComplexity), true
+
+	case "MergeChanceSchedules.friday":
+		if e.complexity.MergeChanceSchedules.Friday == nil {
+			break
+		}
+
+		return e.complexity.MergeChanceSchedules.Friday(childComplexity), true
+
+	case "MergeChanceSchedules.monday":
+		if e.complexity.MergeChanceSchedules.Monday == nil {
+			break
+		}
+
+		return e.complexity.MergeChanceSchedules.Monday(childComplexity), true
+
+	case "MergeChanceSchedules.saturday":
+		if e.complexity.MergeChanceSchedules.Saturday == nil {
+			break
+		}
+
+		return e.complexity.MergeChanceSchedules.Saturday(childComplexity), true
+
+	case "MergeChanceSchedules.sunday":
+		if e.complexity.MergeChanceSchedules.Sunday == nil {
+			break
+		}
+
+		return e.complexity.MergeChanceSchedules.Sunday(childComplexity), true
+
+	case "MergeChanceSchedules.thursday":
+		if e.complexity.MergeChanceSchedules.Thursday == nil {
+			break
+		}
+
+		return e.complexity.MergeChanceSchedules.Thursday(childComplexity), true
+
+	case "MergeChanceSchedules.tuesday":
+		if e.complexity.MergeChanceSchedules.Tuesday == nil {
+			break
+		}
+
+		return e.complexity.MergeChanceSchedules.Tuesday(childComplexity), true
+
+	case "MergeChanceSchedules.wednesday":
+		if e.complexity.MergeChanceSchedules.Wednesday == nil {
+			break
+		}
+
+		return e.complexity.MergeChanceSchedules.Wednesday(childComplexity), true
 
 	case "Mutation.updateRepositoryConfig":
 		if e.complexity.Mutation.UpdateRepositoryConfig == nil {
@@ -216,19 +293,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepositoryConfig.MergeAvailable(childComplexity), true
 
-	case "RepositoryConfig.startSchedule":
-		if e.complexity.RepositoryConfig.StartSchedule == nil {
+	case "RepositoryConfig.schedules":
+		if e.complexity.RepositoryConfig.Schedules == nil {
 			break
 		}
 
-		return e.complexity.RepositoryConfig.StartSchedule(childComplexity), true
-
-	case "RepositoryConfig.stopSchedule":
-		if e.complexity.RepositoryConfig.StopSchedule == nil {
-			break
-		}
-
-		return e.complexity.RepositoryConfig.StopSchedule(childComplexity), true
+		return e.complexity.RepositoryConfig.Schedules(childComplexity), true
 
 	case "User.login":
 		if e.complexity.User.Login == nil {
@@ -341,8 +411,7 @@ type Repository {
 }
 
 type RepositoryConfig {
-  startSchedule: String!
-  stopSchedule: String!
+  schedules: MergeChanceSchedules!
   mergeAvailable: Boolean!
 }
 
@@ -356,9 +425,38 @@ type Query {
   repository(owner: String!, name: String!): Repository
 }
 
+type MergeChanceSchedules {
+  sunday: MergeChanceSchedule
+  monday: MergeChanceSchedule
+  tuesday: MergeChanceSchedule
+  wednesday: MergeChanceSchedule
+  thursday: MergeChanceSchedule
+  friday: MergeChanceSchedule
+  saturday: MergeChanceSchedule
+}
+
+type MergeChanceSchedule {
+  startHour: Int
+  stopHour: Int
+}
+
 input RepositoryConfigToUpdate {
-  startSchedule: String
-  stopSchedule: String
+  schedules: MergeChanceSchedulesToUpdate!
+}
+
+input MergeChanceSchedulesToUpdate {
+  sunday: MergeChanceScheduleToUpdate
+  monday: MergeChanceScheduleToUpdate
+  tuesday: MergeChanceScheduleToUpdate
+  wednesday: MergeChanceScheduleToUpdate
+  thursday: MergeChanceScheduleToUpdate
+  friday: MergeChanceScheduleToUpdate
+  saturday: MergeChanceScheduleToUpdate
+}
+
+input MergeChanceScheduleToUpdate {
+  startHour: Int
+  stopHour: Int
 }
 
 type Mutation {
@@ -540,6 +638,285 @@ func (ec *executionContext) _Installation_installedRepositories(ctx context.Cont
 	res := resTmp.([]*dto.Repository)
 	fc.Result = res
 	return ec.marshalNRepository2ᚕᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MergeChanceSchedule_startHour(ctx context.Context, field graphql.CollectedField, obj *dto.MergeChanceSchedule) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "MergeChanceSchedule",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StartHour, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MergeChanceSchedule_stopHour(ctx context.Context, field graphql.CollectedField, obj *dto.MergeChanceSchedule) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "MergeChanceSchedule",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StopHour, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MergeChanceSchedules_sunday(ctx context.Context, field graphql.CollectedField, obj *dto.MergeChanceSchedules) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "MergeChanceSchedules",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Sunday, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*dto.MergeChanceSchedule)
+	fc.Result = res
+	return ec.marshalOMergeChanceSchedule2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedule(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MergeChanceSchedules_monday(ctx context.Context, field graphql.CollectedField, obj *dto.MergeChanceSchedules) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "MergeChanceSchedules",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Monday, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*dto.MergeChanceSchedule)
+	fc.Result = res
+	return ec.marshalOMergeChanceSchedule2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedule(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MergeChanceSchedules_tuesday(ctx context.Context, field graphql.CollectedField, obj *dto.MergeChanceSchedules) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "MergeChanceSchedules",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Tuesday, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*dto.MergeChanceSchedule)
+	fc.Result = res
+	return ec.marshalOMergeChanceSchedule2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedule(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MergeChanceSchedules_wednesday(ctx context.Context, field graphql.CollectedField, obj *dto.MergeChanceSchedules) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "MergeChanceSchedules",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Wednesday, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*dto.MergeChanceSchedule)
+	fc.Result = res
+	return ec.marshalOMergeChanceSchedule2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedule(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MergeChanceSchedules_thursday(ctx context.Context, field graphql.CollectedField, obj *dto.MergeChanceSchedules) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "MergeChanceSchedules",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Thursday, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*dto.MergeChanceSchedule)
+	fc.Result = res
+	return ec.marshalOMergeChanceSchedule2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedule(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MergeChanceSchedules_friday(ctx context.Context, field graphql.CollectedField, obj *dto.MergeChanceSchedules) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "MergeChanceSchedules",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Friday, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*dto.MergeChanceSchedule)
+	fc.Result = res
+	return ec.marshalOMergeChanceSchedule2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedule(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MergeChanceSchedules_saturday(ctx context.Context, field graphql.CollectedField, obj *dto.MergeChanceSchedules) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "MergeChanceSchedules",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Saturday, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*dto.MergeChanceSchedule)
+	fc.Result = res
+	return ec.marshalOMergeChanceSchedule2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedule(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_updateRepositoryConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -925,7 +1302,7 @@ func (ec *executionContext) _Repository_config(ctx context.Context, field graphq
 	return ec.marshalORepositoryConfig2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepositoryConfig(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _RepositoryConfig_startSchedule(ctx context.Context, field graphql.CollectedField, obj *dto.RepositoryConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _RepositoryConfig_schedules(ctx context.Context, field graphql.CollectedField, obj *dto.RepositoryConfig) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -942,7 +1319,7 @@ func (ec *executionContext) _RepositoryConfig_startSchedule(ctx context.Context,
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.StartSchedule, nil
+		return obj.Schedules, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -954,43 +1331,9 @@ func (ec *executionContext) _RepositoryConfig_startSchedule(ctx context.Context,
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*dto.MergeChanceSchedules)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _RepositoryConfig_stopSchedule(ctx context.Context, field graphql.CollectedField, obj *dto.RepositoryConfig) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "RepositoryConfig",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.StopSchedule, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNMergeChanceSchedules2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedules(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RepositoryConfig_mergeAvailable(ctx context.Context, field graphql.CollectedField, obj *dto.RepositoryConfig) (ret graphql.Marshaler) {
@@ -2184,21 +2527,93 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputMergeChanceScheduleToUpdate(ctx context.Context, obj interface{}) (dto.MergeChanceScheduleToUpdate, error) {
+	var it dto.MergeChanceScheduleToUpdate
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "startHour":
+			var err error
+			it.StartHour, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "stopHour":
+			var err error
+			it.StopHour, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputMergeChanceSchedulesToUpdate(ctx context.Context, obj interface{}) (dto.MergeChanceSchedulesToUpdate, error) {
+	var it dto.MergeChanceSchedulesToUpdate
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "sunday":
+			var err error
+			it.Sunday, err = ec.unmarshalOMergeChanceScheduleToUpdate2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceScheduleToUpdate(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "monday":
+			var err error
+			it.Monday, err = ec.unmarshalOMergeChanceScheduleToUpdate2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceScheduleToUpdate(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "tuesday":
+			var err error
+			it.Tuesday, err = ec.unmarshalOMergeChanceScheduleToUpdate2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceScheduleToUpdate(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "wednesday":
+			var err error
+			it.Wednesday, err = ec.unmarshalOMergeChanceScheduleToUpdate2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceScheduleToUpdate(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "thursday":
+			var err error
+			it.Thursday, err = ec.unmarshalOMergeChanceScheduleToUpdate2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceScheduleToUpdate(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "friday":
+			var err error
+			it.Friday, err = ec.unmarshalOMergeChanceScheduleToUpdate2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceScheduleToUpdate(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "saturday":
+			var err error
+			it.Saturday, err = ec.unmarshalOMergeChanceScheduleToUpdate2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceScheduleToUpdate(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRepositoryConfigToUpdate(ctx context.Context, obj interface{}) (dto.RepositoryConfigToUpdate, error) {
 	var it dto.RepositoryConfigToUpdate
 	var asMap = obj.(map[string]interface{})
 
 	for k, v := range asMap {
 		switch k {
-		case "startSchedule":
+		case "schedules":
 			var err error
-			it.StartSchedule, err = ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "stopSchedule":
-			var err error
-			it.StopSchedule, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.Schedules, err = ec.unmarshalNMergeChanceSchedulesToUpdate2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedulesToUpdate(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -2265,6 +2680,68 @@ func (ec *executionContext) _Installation(ctx context.Context, sel ast.Selection
 				}
 				return res
 			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var mergeChanceScheduleImplementors = []string{"MergeChanceSchedule"}
+
+func (ec *executionContext) _MergeChanceSchedule(ctx context.Context, sel ast.SelectionSet, obj *dto.MergeChanceSchedule) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mergeChanceScheduleImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MergeChanceSchedule")
+		case "startHour":
+			out.Values[i] = ec._MergeChanceSchedule_startHour(ctx, field, obj)
+		case "stopHour":
+			out.Values[i] = ec._MergeChanceSchedule_stopHour(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var mergeChanceSchedulesImplementors = []string{"MergeChanceSchedules"}
+
+func (ec *executionContext) _MergeChanceSchedules(ctx context.Context, sel ast.SelectionSet, obj *dto.MergeChanceSchedules) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mergeChanceSchedulesImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MergeChanceSchedules")
+		case "sunday":
+			out.Values[i] = ec._MergeChanceSchedules_sunday(ctx, field, obj)
+		case "monday":
+			out.Values[i] = ec._MergeChanceSchedules_monday(ctx, field, obj)
+		case "tuesday":
+			out.Values[i] = ec._MergeChanceSchedules_tuesday(ctx, field, obj)
+		case "wednesday":
+			out.Values[i] = ec._MergeChanceSchedules_wednesday(ctx, field, obj)
+		case "thursday":
+			out.Values[i] = ec._MergeChanceSchedules_thursday(ctx, field, obj)
+		case "friday":
+			out.Values[i] = ec._MergeChanceSchedules_friday(ctx, field, obj)
+		case "saturday":
+			out.Values[i] = ec._MergeChanceSchedules_saturday(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2453,13 +2930,8 @@ func (ec *executionContext) _RepositoryConfig(ctx context.Context, sel ast.Selec
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("RepositoryConfig")
-		case "startSchedule":
-			out.Values[i] = ec._RepositoryConfig_startSchedule(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "stopSchedule":
-			out.Values[i] = ec._RepositoryConfig_stopSchedule(ctx, field, obj)
+		case "schedules":
+			out.Values[i] = ec._RepositoryConfig_schedules(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -2880,6 +3352,32 @@ func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.Selec
 	return res
 }
 
+func (ec *executionContext) marshalNMergeChanceSchedules2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedules(ctx context.Context, sel ast.SelectionSet, v dto.MergeChanceSchedules) graphql.Marshaler {
+	return ec._MergeChanceSchedules(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNMergeChanceSchedules2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedules(ctx context.Context, sel ast.SelectionSet, v *dto.MergeChanceSchedules) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._MergeChanceSchedules(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNMergeChanceSchedulesToUpdate2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedulesToUpdate(ctx context.Context, v interface{}) (dto.MergeChanceSchedulesToUpdate, error) {
+	return ec.unmarshalInputMergeChanceSchedulesToUpdate(ctx, v)
+}
+
+func (ec *executionContext) unmarshalNMergeChanceSchedulesToUpdate2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedulesToUpdate(ctx context.Context, v interface{}) (*dto.MergeChanceSchedulesToUpdate, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalNMergeChanceSchedulesToUpdate2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedulesToUpdate(ctx, v)
+	return &res, err
+}
+
 func (ec *executionContext) marshalNRepository2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepository(ctx context.Context, sel ast.SelectionSet, v dto.Repository) graphql.Marshaler {
 	return ec._Repository(ctx, sel, &v)
 }
@@ -3220,6 +3718,52 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
+}
+
+func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v interface{}) (int, error) {
+	return graphql.UnmarshalInt(v)
+}
+
+func (ec *executionContext) marshalOInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	return graphql.MarshalInt(v)
+}
+
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOInt2int(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec.marshalOInt2int(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalOMergeChanceSchedule2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedule(ctx context.Context, sel ast.SelectionSet, v dto.MergeChanceSchedule) graphql.Marshaler {
+	return ec._MergeChanceSchedule(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOMergeChanceSchedule2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedule(ctx context.Context, sel ast.SelectionSet, v *dto.MergeChanceSchedule) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._MergeChanceSchedule(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOMergeChanceScheduleToUpdate2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceScheduleToUpdate(ctx context.Context, v interface{}) (dto.MergeChanceScheduleToUpdate, error) {
+	return ec.unmarshalInputMergeChanceScheduleToUpdate(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOMergeChanceScheduleToUpdate2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceScheduleToUpdate(ctx context.Context, v interface{}) (*dto.MergeChanceScheduleToUpdate, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOMergeChanceScheduleToUpdate2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceScheduleToUpdate(ctx, v)
+	return &res, err
 }
 
 func (ec *executionContext) marshalORepository2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐRepository(ctx context.Context, sel ast.SelectionSet, v dto.Repository) graphql.Marshaler {

@@ -51,9 +51,8 @@ func (r *Repository) PutRepositoryConfigs(ctx context.Context, configs []*model.
 		dto := &dtoRepositoryConfig{
 			Owner:          config.Owner,
 			Name:           config.Name,
-			StartSchedule:  config.StartSchedule.String(),
-			StopSchedule:   config.StopSchedule.String(),
 			MergeAvailable: config.MergeAvailable,
+			Schedules:      newDTOMergeChanceSchedulesFromModel(config.Schedules),
 		}
 		dtos = append(dtos, dto)
 	}
@@ -156,18 +155,131 @@ func repoFrom(snapshot *firestore.DocumentSnapshot) (*model.RepositoryConfig, er
 type dtoRepositoryConfig struct {
 	Owner          string
 	Name           string
-	StartSchedule  string
-	StopSchedule   string
+	Schedules      *dtoMergeChanceSchedules
 	MergeAvailable bool
 }
 
 func (d *dtoRepositoryConfig) ToModel() (*model.RepositoryConfig, error) {
-	m, err := model.NewRepositoryConfig([]byte(d.StartSchedule), []byte(d.StopSchedule))
+	m := &model.RepositoryConfig{Schedules: &model.MergeChanceSchedules{}}
+	s, err := d.Schedules.toModel()
 	if err != nil {
 		return nil, err
 	}
+	m.Schedules = s
 	m.Name = d.Name
 	m.Owner = d.Owner
 	m.MergeAvailable = d.MergeAvailable
 	return m, nil
+}
+
+func newDTOMergeChanceSchedulesFromModel(s *model.MergeChanceSchedules) *dtoMergeChanceSchedules {
+	dto := &dtoMergeChanceSchedules{}
+	if s.Sunday != nil {
+		dto.Sunday = &dtoMergeChanceSchedule{
+			StartHour: s.Sunday.StartHour,
+			StopHour:  s.Sunday.StopHour,
+		}
+	}
+	if s.Monday != nil {
+		dto.Monday = &dtoMergeChanceSchedule{
+			StartHour: s.Monday.StartHour,
+			StopHour:  s.Monday.StopHour,
+		}
+	}
+	if s.Tuesday != nil {
+		dto.Tuesday = &dtoMergeChanceSchedule{
+			StartHour: s.Tuesday.StartHour,
+			StopHour:  s.Tuesday.StopHour,
+		}
+	}
+	if s.Wednesday != nil {
+		dto.Wednesday = &dtoMergeChanceSchedule{
+			StartHour: s.Wednesday.StartHour,
+			StopHour:  s.Wednesday.StopHour,
+		}
+	}
+	if s.Thursday != nil {
+		dto.Thursday = &dtoMergeChanceSchedule{
+			StartHour: s.Thursday.StartHour,
+			StopHour:  s.Thursday.StopHour,
+		}
+	}
+	if s.Saturday != nil {
+		dto.Saturday = &dtoMergeChanceSchedule{
+			StartHour: s.Saturday.StartHour,
+			StopHour:  s.Saturday.StopHour,
+		}
+	}
+	if s.Friday != nil {
+		dto.Friday = &dtoMergeChanceSchedule{
+			StartHour: s.Friday.StartHour,
+			StopHour:  s.Friday.StopHour,
+		}
+	}
+	return dto
+}
+
+type dtoMergeChanceSchedule struct {
+	StartHour *int
+	StopHour  *int
+}
+
+type dtoMergeChanceSchedules struct {
+	Sunday    *dtoMergeChanceSchedule
+	Monday    *dtoMergeChanceSchedule
+	Tuesday   *dtoMergeChanceSchedule
+	Wednesday *dtoMergeChanceSchedule
+	Thursday  *dtoMergeChanceSchedule
+	Friday    *dtoMergeChanceSchedule
+	Saturday  *dtoMergeChanceSchedule
+}
+
+func (dto *dtoMergeChanceSchedules) toModel() (*model.MergeChanceSchedules, error) {
+	if dto == nil {
+		return &model.MergeChanceSchedules{}, nil
+	}
+	s := &model.MergeChanceSchedules{}
+	if dto.Sunday != nil {
+		s.Sunday = &model.MergeChanceSchedule{
+			StartHour: dto.Sunday.StartHour,
+			StopHour:  dto.Sunday.StopHour,
+		}
+	}
+	if dto.Monday != nil {
+		s.Monday = &model.MergeChanceSchedule{
+			StartHour: dto.Monday.StartHour,
+			StopHour:  dto.Monday.StopHour,
+		}
+	}
+	if dto.Tuesday != nil {
+		s.Tuesday = &model.MergeChanceSchedule{
+			StartHour: dto.Tuesday.StartHour,
+			StopHour:  dto.Tuesday.StopHour,
+		}
+	}
+	if dto.Wednesday != nil {
+		s.Wednesday = &model.MergeChanceSchedule{
+			StartHour: dto.Wednesday.StartHour,
+			StopHour:  dto.Wednesday.StopHour,
+		}
+	}
+	if dto.Thursday != nil {
+		s.Thursday = &model.MergeChanceSchedule{
+			StartHour: dto.Thursday.StartHour,
+			StopHour:  dto.Thursday.StopHour,
+		}
+	}
+	if dto.Friday != nil {
+		s.Friday = &model.MergeChanceSchedule{
+			StartHour: dto.Friday.StartHour,
+			StopHour:  dto.Friday.StopHour,
+		}
+	}
+	if dto.Saturday != nil {
+		s.Saturday = &model.MergeChanceSchedule{
+			StartHour: dto.Saturday.StartHour,
+			StopHour:  dto.Saturday.StopHour,
+		}
+	}
+	return s, nil
 }

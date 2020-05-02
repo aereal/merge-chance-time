@@ -43,22 +43,25 @@ func (s CronSchedule) MarshalText() ([]byte, error) {
 	return []byte(s.Repr), nil
 }
 
-func NewRepositoryConfig(startScheduleRepr, stopScheduleRepr []byte) (*RepositoryConfig, error) {
-	cfg := &RepositoryConfig{StartSchedule: &CronSchedule{}, StopSchedule: &CronSchedule{}}
-	if err := cfg.StartSchedule.UnmarshalText(startScheduleRepr); err != nil {
-		return nil, err
-	}
-	if err := cfg.StopSchedule.UnmarshalText(stopScheduleRepr); err != nil {
-		return nil, err
-	}
-	return cfg, nil
+type MergeChanceSchedule struct {
+	StartHour *int
+	StopHour  *int
+}
+
+type MergeChanceSchedules struct {
+	Sunday    *MergeChanceSchedule
+	Monday    *MergeChanceSchedule
+	Tuesday   *MergeChanceSchedule
+	Wednesday *MergeChanceSchedule
+	Thursday  *MergeChanceSchedule
+	Friday    *MergeChanceSchedule
+	Saturday  *MergeChanceSchedule
 }
 
 type RepositoryConfig struct {
 	Owner          string
 	Name           string
-	StartSchedule  *CronSchedule
-	StopSchedule   *CronSchedule
+	Schedules      *MergeChanceSchedules
 	MergeAvailable bool
 }
 
@@ -70,15 +73,11 @@ var (
 )
 
 func (c *RepositoryConfig) ShouldStartOn(expected time.Time) bool {
-	expected = expected.Truncate(baseDuration)
-	baseTime := expected.Add(baseDuration * -1)
-	return timeHasCome(c.StartSchedule, baseTime, expected)
+	return false // TODO
 }
 
 func (c *RepositoryConfig) ShouldStopOn(expected time.Time) bool {
-	expected = expected.Truncate(baseDuration)
-	baseTime := expected.Add(baseDuration * -1)
-	return timeHasCome(c.StopSchedule, baseTime, expected)
+	return false // TODO
 }
 
 func (c *RepositoryConfig) Valid() error {

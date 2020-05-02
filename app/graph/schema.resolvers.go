@@ -5,7 +5,6 @@ package graph
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aereal/merge-chance-time/app/graph/dto"
 	"github.com/aereal/merge-chance-time/app/graph/generated"
@@ -45,37 +44,13 @@ func (r *mutationResolver) UpdateRepositoryConfig(ctx context.Context, owner str
 		return false, err
 	}
 
-	var (
-		start      = current.StartSchedule
-		stop       = current.StopSchedule
-		updatedAny = false
-	)
-
-	if config.StartSchedule != nil {
-		if err := start.UnmarshalText([]byte(*config.StartSchedule)); err != nil {
-			return false, err
-		}
-		updatedAny = true
-	}
-
-	if config.StopSchedule != nil {
-		if err := stop.UnmarshalText([]byte(*config.StopSchedule)); err != nil {
-			return false, err
-		}
-		updatedAny = true
-	}
-
-	if !updatedAny {
-		return false, fmt.Errorf("update request is empty")
-	}
-
+	schedules := config.Schedules.ToModel()
 	cfgs := []*model.RepositoryConfig{
 		{
 			Owner:          owner,
 			Name:           name,
-			StartSchedule:  start,
-			StopSchedule:   stop,
 			MergeAvailable: current.MergeAvailable,
+			Schedules:      schedules,
 		},
 	}
 	if err := r.repo.PutRepositoryConfigs(ctx, cfgs); err != nil {
@@ -115,9 +90,8 @@ func (r *repositoryResolver) Config(ctx context.Context, obj *dto.Repository) (*
 		return nil, err
 	}
 	return &dto.RepositoryConfig{
-		StartSchedule:  cfg.StartSchedule.String(),
-		StopSchedule:   cfg.StopSchedule.String(),
 		MergeAvailable: cfg.MergeAvailable,
+		Schedules:      dto.NewMergeChanceSchedules(cfg.Schedules),
 	}, nil
 }
 
