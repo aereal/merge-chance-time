@@ -3,45 +3,7 @@ package model
 import (
 	"fmt"
 	"time"
-
-	"github.com/robfig/cron/v3"
 )
-
-type CronSchedule struct {
-	Repr string
-	Spec cron.Schedule
-}
-
-func (s *CronSchedule) Next(t time.Time) time.Time {
-	if s == nil {
-		return time.Time{}
-	}
-	return s.Spec.Next(t)
-}
-
-func (s *CronSchedule) String() string {
-	if s == nil {
-		return ""
-	}
-	return s.Repr
-}
-
-func (s *CronSchedule) UnmarshalText(text []byte) error {
-	repr := string(text)
-	parsed, err := cronParser.Parse(repr)
-	if err != nil {
-		return err
-	}
-	*s = CronSchedule{
-		Spec: parsed,
-		Repr: repr,
-	}
-	return nil
-}
-
-func (s CronSchedule) MarshalText() ([]byte, error) {
-	return []byte(s.Repr), nil
-}
 
 type MergeChanceSchedule struct {
 	StartHour int
@@ -58,6 +20,27 @@ type MergeChanceSchedules struct {
 	Saturday  *MergeChanceSchedule
 }
 
+func (s *MergeChanceSchedules) ForWeekday(wd time.Weekday) *MergeChanceSchedule {
+	switch wd {
+	case time.Sunday:
+		return s.Sunday
+	case time.Monday:
+		return s.Monday
+	case time.Tuesday:
+		return s.Tuesday
+	case time.Wednesday:
+		return s.Wednesday
+	case time.Thursday:
+		return s.Thursday
+	case time.Friday:
+		return s.Friday
+	case time.Saturday:
+		return s.Saturday
+	default:
+		return nil
+	}
+}
+
 type RepositoryConfig struct {
 	Owner          string
 	Name           string
@@ -65,19 +48,26 @@ type RepositoryConfig struct {
 	MergeAvailable bool
 }
 
-var (
-	cronParser   = cron.NewParser(cron.Hour | cron.Dom | cron.Month | cron.Dow)
-	baseDuration = time.Hour
-
-	NowFunc = time.Now
-)
-
 func (c *RepositoryConfig) ShouldStartOn(expected time.Time) bool {
-	return false // TODO
+	if c.MergeAvailable {
+		return false
+	}
+	schedule := c.Schedules.ForWeekday(expected.Weekday())
+	if schedule == nil {
+		return false
+	}
+	return expected.Hour() == schedule.StartHour
 }
 
 func (c *RepositoryConfig) ShouldStopOn(expected time.Time) bool {
-	return false // TODO
+	if !c.MergeAvailable {
+		return false
+	}
+	schedule := c.Schedules.ForWeekday(expected.Weekday())
+	if schedule == nil {
+		return false
+	}
+	return expected.Hour() == schedule.StopHour
 }
 
 func (c *RepositoryConfig) Valid() error {
@@ -88,9 +78,4 @@ func (c *RepositoryConfig) Valid() error {
 		return fmt.Errorf("Name must not be empty")
 	}
 	return nil
-}
-
-func timeHasCome(schedule *CronSchedule, baseTime, expectedTime time.Time) bool {
-	nextTime := schedule.Next(baseTime)
-	return nextTime.Equal(expectedTime)
 }
