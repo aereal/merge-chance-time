@@ -4,7 +4,7 @@ import Typography from "@material-ui/core/Typography"
 import red from "@material-ui/core/colors/red"
 import indigo from "@material-ui/core/colors/indigo"
 import makeStyles from "@material-ui/core/styles/makeStyles"
-import { Weekday, sunday, saturday } from "../schedule"
+import { Weekday, sunday, saturday, wholeDay } from "../schedule"
 
 export type OnUpdateValue = (value: number | number[] | null) => void
 export type MergeChanceScheduleRange = [number, number]
@@ -44,9 +44,9 @@ export const WeekdayRangeSlider: FC<WeekdayRangeSliderProps> = ({ weekday, onUpd
         marks
         valueLabelDisplay="auto"
         step={1}
-        min={0}
-        max={23}
-        value={scheduleRange ?? [0, 23] /* TODO */}
+        min={wholeDay[0]}
+        max={wholeDay[1]}
+        value={scheduleRange ?? wholeDay /* TODO */}
         onChange={handleChange}
       />
     </>
