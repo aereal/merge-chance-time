@@ -3,6 +3,8 @@
 // @generated
 // This file was automatically generated and should not be edited.
 
+import { RepositoryConfigToUpdate } from "./../../globalTypes";
+
 // ====================================================
 // GraphQL mutation operation: UpdateRepoConfig
 // ====================================================
@@ -14,6 +16,5 @@ export interface UpdateRepoConfig {
 export interface UpdateRepoConfigVariables {
   readonly owner: string;
   readonly name: string;
-  readonly startSchedule?: string | null;
-  readonly stopSchedule?: string | null;
+  readonly config: RepositoryConfigToUpdate;
 }

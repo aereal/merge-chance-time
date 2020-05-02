@@ -1,3 +1,4 @@
+import gql from "graphql-tag"
 import React, { FC, ChangeEvent } from "react"
 import Slider from "@material-ui/core/Slider"
 import red from "@material-ui/core/colors/red"
@@ -7,15 +8,26 @@ import Switch from "@material-ui/core/Switch"
 import FormGroup from "@material-ui/core/FormGroup"
 import FormControlLabel from "@material-ui/core/FormControlLabel"
 import { Weekday, sunday, saturday, wholeDay } from "../schedule"
+import { MergeChanceScheduleFragment } from "./__generated__/MergeChanceScheduleFragment"
 
 export type OnUpdateValue = (value: number | number[] | null) => void
-export type MergeChanceScheduleRange = [number, number]
+export interface MergeChanceScheduleRange {
+  startHour: number
+  stopHour: number
+}
 
 interface WeekdayRangeSliderProps {
   readonly weekday: Weekday
-  readonly scheduleRange: MergeChanceScheduleRange | null
+  readonly scheduleRange: MergeChanceScheduleFragment | null
   readonly onUpdateValue: OnUpdateValue
 }
+
+export const MERGE_CHANCE_SCHEDULE_FRAGMENT = gql`
+  fragment MergeChanceScheduleFragment on MergeChanceSchedule {
+    startHour
+    stopHour
+  }
+`
 
 const useSyles = makeStyles({
   sundayLabel: {
@@ -30,6 +42,8 @@ export const WeekdayRangeSlider: FC<WeekdayRangeSliderProps> = ({ weekday, onUpd
   const { sundayLabel, saturdayLabel } = useSyles()
 
   const available = scheduleRange !== null
+  const { startHour, stopHour } = scheduleRange ?? wholeDay
+  const range = [startHour, stopHour]
   const colors: Partial<Record<Weekday, string>> = {
     [saturday]: saturdayLabel,
     [sunday]: sundayLabel,
@@ -38,7 +52,7 @@ export const WeekdayRangeSlider: FC<WeekdayRangeSliderProps> = ({ weekday, onUpd
     onUpdateValue(value)
   }
   const handleSwitchChange = (_: ChangeEvent<HTMLInputElement>, checked: boolean): void => {
-    onUpdateValue(checked ? scheduleRange ?? wholeDay : null)
+    onUpdateValue(checked ? range : null)
   }
 
   return (
@@ -55,9 +69,9 @@ export const WeekdayRangeSlider: FC<WeekdayRangeSliderProps> = ({ weekday, onUpd
         marks
         valueLabelDisplay="auto"
         step={1}
-        min={wholeDay[0]}
-        max={wholeDay[1]}
-        value={scheduleRange ?? wholeDay}
+        min={wholeDay.startHour}
+        max={wholeDay.stopHour}
+        value={range}
         onChange={handleRangeChange}
       />
     </>
