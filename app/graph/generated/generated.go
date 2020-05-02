@@ -436,8 +436,8 @@ type MergeChanceSchedules {
 }
 
 type MergeChanceSchedule {
-  startHour: Int
-  stopHour: Int
+  startHour: Int!
+  stopHour: Int!
 }
 
 input RepositoryConfigToUpdate {
@@ -455,8 +455,8 @@ input MergeChanceSchedulesToUpdate {
 }
 
 input MergeChanceScheduleToUpdate {
-  startHour: Int
-  stopHour: Int
+  startHour: Int!
+  stopHour: Int!
 }
 
 type Mutation {
@@ -664,11 +664,14 @@ func (ec *executionContext) _MergeChanceSchedule_startHour(ctx context.Context, 
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _MergeChanceSchedule_stopHour(ctx context.Context, field graphql.CollectedField, obj *dto.MergeChanceSchedule) (ret graphql.Marshaler) {
@@ -695,11 +698,14 @@ func (ec *executionContext) _MergeChanceSchedule_stopHour(ctx context.Context, f
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _MergeChanceSchedules_sunday(ctx context.Context, field graphql.CollectedField, obj *dto.MergeChanceSchedules) (ret graphql.Marshaler) {
@@ -2535,13 +2541,13 @@ func (ec *executionContext) unmarshalInputMergeChanceScheduleToUpdate(ctx contex
 		switch k {
 		case "startHour":
 			var err error
-			it.StartHour, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			it.StartHour, err = ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "stopHour":
 			var err error
-			it.StopHour, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			it.StopHour, err = ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -2704,8 +2710,14 @@ func (ec *executionContext) _MergeChanceSchedule(ctx context.Context, sel ast.Se
 			out.Values[i] = graphql.MarshalString("MergeChanceSchedule")
 		case "startHour":
 			out.Values[i] = ec._MergeChanceSchedule_startHour(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "stopHour":
 			out.Values[i] = ec._MergeChanceSchedule_stopHour(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3338,6 +3350,20 @@ func (ec *executionContext) marshalNInstallation2ᚖgithubᚗcomᚋaerealᚋmerg
 	return ec._Installation(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {
+	return graphql.UnmarshalInt(v)
+}
+
+func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	res := graphql.MarshalInt(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) unmarshalNInt2int64(ctx context.Context, v interface{}) (int64, error) {
 	return graphql.UnmarshalInt64(v)
 }
@@ -3718,29 +3744,6 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
-}
-
-func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v interface{}) (int, error) {
-	return graphql.UnmarshalInt(v)
-}
-
-func (ec *executionContext) marshalOInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
-	return graphql.MarshalInt(v)
-}
-
-func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalOInt2int(ctx, v)
-	return &res, err
-}
-
-func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec.marshalOInt2int(ctx, sel, *v)
 }
 
 func (ec *executionContext) marshalOMergeChanceSchedule2githubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedule(ctx context.Context, sel ast.SelectionSet, v dto.MergeChanceSchedule) graphql.Marshaler {

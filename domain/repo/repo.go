@@ -220,8 +220,8 @@ func newDTOMergeChanceSchedulesFromModel(s *model.MergeChanceSchedules) *dtoMerg
 }
 
 type dtoMergeChanceSchedule struct {
-	StartHour *int
-	StopHour  *int
+	StartHour int
+	StopHour  int
 }
 
 type dtoMergeChanceSchedules struct {

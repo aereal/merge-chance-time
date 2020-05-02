@@ -3,13 +3,13 @@
 package dto
 
 type MergeChanceSchedule struct {
-	StartHour *int `json:"startHour"`
-	StopHour  *int `json:"stopHour"`
+	StartHour int `json:"startHour"`
+	StopHour  int `json:"stopHour"`
 }
 
 type MergeChanceScheduleToUpdate struct {
-	StartHour *int `json:"startHour"`
-	StopHour  *int `json:"stopHour"`
+	StartHour int `json:"startHour"`
+	StopHour  int `json:"stopHour"`
 }
 
 type MergeChanceSchedules struct {

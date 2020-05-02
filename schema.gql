@@ -49,8 +49,8 @@ type MergeChanceSchedules {
 }
 
 type MergeChanceSchedule {
-  startHour: Int
-  stopHour: Int
+  startHour: Int!
+  stopHour: Int!
 }
 
 input RepositoryConfigToUpdate {
@@ -68,8 +68,8 @@ input MergeChanceSchedulesToUpdate {
 }
 
 input MergeChanceScheduleToUpdate {
-  startHour: Int
-  stopHour: Int
+  startHour: Int!
+  stopHour: Int!
 }
 
 type Mutation {

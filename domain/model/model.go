@@ -44,8 +44,8 @@ func (s CronSchedule) MarshalText() ([]byte, error) {
 }
 
 type MergeChanceSchedule struct {
-	StartHour *int
-	StopHour  *int
+	StartHour int
+	StopHour  int
 }
 
 type MergeChanceSchedules struct {
