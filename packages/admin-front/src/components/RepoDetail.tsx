@@ -1,14 +1,19 @@
-import React, { FC, useState, FormEventHandler, FormEvent } from "react"
-import TextField from "@material-ui/core/TextField"
-import Grid from "@material-ui/core/Grid"
+import React, { FC, useState, FormEvent } from "react"
 import makeStyles from "@material-ui/core/styles/makeStyles"
 import gql from "graphql-tag"
 import { useMutation } from "@apollo/react-hooks"
+import { GraphQLError } from "graphql"
 import { useFetchState } from "../effects/fetch-state"
-import { RepoDetailFragment } from "./__generated__/RepoDetailFragment"
+import { MergeChanceSchedulesToUpdate, MergeChanceScheduleToUpdate } from "../globalTypes"
+import {
+  RepoDetailFragment,
+  RepoDetailFragment_config_schedules as Schedules,
+} from "./__generated__/RepoDetailFragment"
 import { UpdateRepoConfig, UpdateRepoConfigVariables } from "./__generated__/UpdateRepoConfig"
 import { PrimaryButton } from "./PrimaryButton"
 import { ErrorNotification, SuccessNotification } from "./Notification"
+import { ScheduleRange, SCHEDULES_FRAGMENT } from "./ScheduleRange"
+import { MergeChanceScheduleFragment } from "./__generated__/MergeChanceScheduleFragment"
 
 export const REPO_DETAIL_FRAGMENT = gql`
   fragment RepoDetailFragment on Repository {
@@ -17,20 +22,18 @@ export const REPO_DETAIL_FRAGMENT = gql`
     }
     name
     config {
-      startSchedule
-      stopSchedule
       mergeAvailable
+      schedules {
+        ...SchedulesFragment
+      }
     }
   }
+  ${SCHEDULES_FRAGMENT}
 `
 
 const UPDATE_REPO_CONFIG = gql`
-  mutation UpdateRepoConfig($owner: String!, $name: String!, $startSchedule: String, $stopSchedule: String) {
-    updateRepositoryConfig(
-      owner: $owner
-      name: $name
-      config: { startSchedule: $startSchedule, stopSchedule: $stopSchedule }
-    )
+  mutation UpdateRepoConfig($owner: String!, $name: String!, $config: RepositoryConfigToUpdate!) {
+    updateRepositoryConfig(owner: $owner, name: $name, config: $config)
   }
 `
 
@@ -46,28 +49,42 @@ interface RepoDetailProps {
 
 export const RepoDetail: FC<RepoDetailProps> = ({ repo }) => {
   const classes = useStyles()
-  const [startSchedule, setStartSchedule] = useState(repo.config?.startSchedule)
-  const [stopSchedule, setStopSchedule] = useState(repo.config?.stopSchedule)
+  const [schedules, setSchedules] = useState<Schedules>(
+    repo.config?.schedules ?? {
+      __typename: "MergeChanceSchedules",
+      sunday: null,
+      monday: null,
+      tuesday: null,
+      wednesday: null,
+      thursday: null,
+      friday: null,
+      saturday: null,
+    }
+  )
   const { fetchState, start, succeed, fail, ready } = useFetchState()
   const [doUpdate] = useMutation<UpdateRepoConfig, UpdateRepoConfigVariables>(UPDATE_REPO_CONFIG)
 
-  const handleChangeStart: FormEventHandler<HTMLTextAreaElement | HTMLInputElement> = (event) => {
-    setStartSchedule(event.currentTarget.value)
-  }
-  const handleChangeStop: FormEventHandler<HTMLTextAreaElement | HTMLInputElement> = (event) => {
-    setStopSchedule(event.currentTarget.value)
+  const handleChanged = (updated: Schedules): void => {
+    setSchedules(updated)
   }
   const handleSubmit = async (event: FormEvent): Promise<void> => {
     event.preventDefault()
     start()
-    const { errors } = await doUpdate({
-      variables: {
-        owner: repo.owner.login,
-        name: repo.name,
-        startSchedule,
-        stopSchedule,
-      },
-    })
+    let errors: GraphQLError[] | undefined
+    try {
+      const ret = await doUpdate({
+        variables: {
+          owner: repo.owner.login,
+          name: repo.name,
+          config: {
+            schedules: toInput(schedules),
+          },
+        },
+      })
+      errors = ret.errors
+    } catch (e) {
+      errors = [e]
+    }
     const errn = errors?.length ?? 0
     if (errn > 0) {
       fail(errors![0])
@@ -85,14 +102,7 @@ export const RepoDetail: FC<RepoDetailProps> = ({ repo }) => {
   return (
     <>
       <form noValidate onSubmit={handleSubmit}>
-        <Grid container spacing={2}>
-          <Grid item md>
-            <TextField label="Start schedule" value={startSchedule} onChange={handleChangeStart} />
-          </Grid>
-          <Grid item md>
-            <TextField label="Stop schedule" value={stopSchedule} onChange={handleChangeStop} />
-          </Grid>
-        </Grid>
+        <ScheduleRange schedules={schedules} onChanged={handleChanged} />
         <div className={classes.actions}>
           <PrimaryButton disabled={fetchState.kind === "started"} type="submit">
             Save
@@ -110,3 +120,16 @@ export const RepoDetail: FC<RepoDetailProps> = ({ repo }) => {
     </>
   )
 }
+
+const scheduleToInput = (schedule: MergeChanceScheduleFragment | null): MergeChanceScheduleToUpdate | null =>
+  schedule ? { startHour: schedule.startHour, stopHour: schedule.stopHour } : null
+
+const toInput = (schedules: Schedules): MergeChanceSchedulesToUpdate => ({
+  sunday: scheduleToInput(schedules.sunday),
+  monday: scheduleToInput(schedules.monday),
+  tuesday: scheduleToInput(schedules.tuesday),
+  wednesday: scheduleToInput(schedules.wednesday),
+  thursday: scheduleToInput(schedules.thursday),
+  friday: scheduleToInput(schedules.friday),
+  saturday: scheduleToInput(schedules.saturday),
+})

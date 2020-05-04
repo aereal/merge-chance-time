@@ -3,82 +3,71 @@ package model
 import (
 	"fmt"
 	"time"
-
-	"github.com/robfig/cron/v3"
 )
 
-type CronSchedule struct {
-	Repr string
-	Spec cron.Schedule
+type MergeChanceSchedule struct {
+	StartHour int
+	StopHour  int
 }
 
-func (s *CronSchedule) Next(t time.Time) time.Time {
-	if s == nil {
-		return time.Time{}
-	}
-	return s.Spec.Next(t)
+type MergeChanceSchedules struct {
+	Sunday    *MergeChanceSchedule
+	Monday    *MergeChanceSchedule
+	Tuesday   *MergeChanceSchedule
+	Wednesday *MergeChanceSchedule
+	Thursday  *MergeChanceSchedule
+	Friday    *MergeChanceSchedule
+	Saturday  *MergeChanceSchedule
 }
 
-func (s *CronSchedule) String() string {
-	if s == nil {
-		return ""
+func (s *MergeChanceSchedules) ForWeekday(wd time.Weekday) *MergeChanceSchedule {
+	switch wd {
+	case time.Sunday:
+		return s.Sunday
+	case time.Monday:
+		return s.Monday
+	case time.Tuesday:
+		return s.Tuesday
+	case time.Wednesday:
+		return s.Wednesday
+	case time.Thursday:
+		return s.Thursday
+	case time.Friday:
+		return s.Friday
+	case time.Saturday:
+		return s.Saturday
+	default:
+		return nil
 	}
-	return s.Repr
-}
-
-func (s *CronSchedule) UnmarshalText(text []byte) error {
-	repr := string(text)
-	parsed, err := cronParser.Parse(repr)
-	if err != nil {
-		return err
-	}
-	*s = CronSchedule{
-		Spec: parsed,
-		Repr: repr,
-	}
-	return nil
-}
-
-func (s CronSchedule) MarshalText() ([]byte, error) {
-	return []byte(s.Repr), nil
-}
-
-func NewRepositoryConfig(startScheduleRepr, stopScheduleRepr []byte) (*RepositoryConfig, error) {
-	cfg := &RepositoryConfig{StartSchedule: &CronSchedule{}, StopSchedule: &CronSchedule{}}
-	if err := cfg.StartSchedule.UnmarshalText(startScheduleRepr); err != nil {
-		return nil, err
-	}
-	if err := cfg.StopSchedule.UnmarshalText(stopScheduleRepr); err != nil {
-		return nil, err
-	}
-	return cfg, nil
 }
 
 type RepositoryConfig struct {
 	Owner          string
 	Name           string
-	StartSchedule  *CronSchedule
-	StopSchedule   *CronSchedule
+	Schedules      *MergeChanceSchedules
 	MergeAvailable bool
 }
 
-var (
-	cronParser   = cron.NewParser(cron.Hour | cron.Dom | cron.Month | cron.Dow)
-	baseDuration = time.Hour
-
-	NowFunc = time.Now
-)
-
 func (c *RepositoryConfig) ShouldStartOn(expected time.Time) bool {
-	expected = expected.Truncate(baseDuration)
-	baseTime := expected.Add(baseDuration * -1)
-	return timeHasCome(c.StartSchedule, baseTime, expected)
+	if c.MergeAvailable {
+		return false
+	}
+	schedule := c.Schedules.ForWeekday(expected.Weekday())
+	if schedule == nil {
+		return false
+	}
+	return expected.Hour() == schedule.StartHour
 }
 
 func (c *RepositoryConfig) ShouldStopOn(expected time.Time) bool {
-	expected = expected.Truncate(baseDuration)
-	baseTime := expected.Add(baseDuration * -1)
-	return timeHasCome(c.StopSchedule, baseTime, expected)
+	if !c.MergeAvailable {
+		return false
+	}
+	schedule := c.Schedules.ForWeekday(expected.Weekday())
+	if schedule == nil {
+		return false
+	}
+	return expected.Hour() == schedule.StopHour
 }
 
 func (c *RepositoryConfig) Valid() error {
@@ -89,9 +78,4 @@ func (c *RepositoryConfig) Valid() error {
 		return fmt.Errorf("Name must not be empty")
 	}
 	return nil
-}
-
-func timeHasCome(schedule *CronSchedule, baseTime, expectedTime time.Time) bool {
-	nextTime := schedule.Next(baseTime)
-	return nextTime.Equal(expectedTime)
 }

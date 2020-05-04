@@ -15,7 +15,6 @@ require (
 	github.com/golang/protobuf v1.4.0 // indirect
 	github.com/google/go-github/v29 v29.0.3 // indirect
 	github.com/google/go-github/v30 v30.1.0
-	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/cors v1.7.0
 	github.com/vektah/gqlparser/v2 v2.0.1
 	github.com/yfuruyama/stackdriver-request-context-log v0.0.1

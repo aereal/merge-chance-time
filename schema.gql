@@ -24,8 +24,7 @@ type Repository {
 }
 
 type RepositoryConfig {
-  startSchedule: String!
-  stopSchedule: String!
+  schedules: MergeChanceSchedules!
   mergeAvailable: Boolean!
 }
 
@@ -39,9 +38,38 @@ type Query {
   repository(owner: String!, name: String!): Repository
 }
 
+type MergeChanceSchedules {
+  sunday: MergeChanceSchedule
+  monday: MergeChanceSchedule
+  tuesday: MergeChanceSchedule
+  wednesday: MergeChanceSchedule
+  thursday: MergeChanceSchedule
+  friday: MergeChanceSchedule
+  saturday: MergeChanceSchedule
+}
+
+type MergeChanceSchedule {
+  startHour: Int!
+  stopHour: Int!
+}
+
 input RepositoryConfigToUpdate {
-  startSchedule: String
-  stopSchedule: String
+  schedules: MergeChanceSchedulesToUpdate!
+}
+
+input MergeChanceSchedulesToUpdate {
+  sunday: MergeChanceScheduleToUpdate
+  monday: MergeChanceScheduleToUpdate
+  tuesday: MergeChanceScheduleToUpdate
+  wednesday: MergeChanceScheduleToUpdate
+  thursday: MergeChanceScheduleToUpdate
+  friday: MergeChanceScheduleToUpdate
+  saturday: MergeChanceScheduleToUpdate
+}
+
+input MergeChanceScheduleToUpdate {
+  startHour: Int!
+  stopHour: Int!
 }
 
 type Mutation {
