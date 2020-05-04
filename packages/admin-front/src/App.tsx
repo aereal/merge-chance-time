@@ -11,6 +11,8 @@ import { CallbackPage } from "./pages/CallbackPage"
 import { ListReposPage } from "./pages/ListReposPage"
 import { RepoDetailPage } from "./pages/RepoDetailPage"
 import { TokenPage } from "./pages/TokenPage"
+import { FirebaseAuthSignInPage } from "./pages/FirebaseAuthSignInPage"
+import { DefaultFirebaseAuthProvider } from "./effects/firebase-auth"
 
 interface RoutingProps {
   readonly route: Route<typeof routes>
@@ -20,6 +22,8 @@ const Routing: FC<RoutingProps> = ({ route }) => {
   switch (route.name) {
     case routes.signIn.name:
       return <SignInPage />
+    case routes.firebaesAuth.name:
+      return <FirebaseAuthSignInPage />
     case routes.root.name:
       return <ListReposPage />
     case routes.authCallback.name:
@@ -41,11 +45,13 @@ const App: FC = () => {
     <>
       <CssBaseline />
       <Container component="main" maxWidth="md">
-        <DefaultAuthenticationProvider>
-          <DefaultApolloClientProvider>
-            <Routing route={route} />
-          </DefaultApolloClientProvider>
-        </DefaultAuthenticationProvider>
+        <DefaultFirebaseAuthProvider>
+          <DefaultAuthenticationProvider>
+            <DefaultApolloClientProvider>
+              <Routing route={route} />
+            </DefaultApolloClientProvider>
+          </DefaultAuthenticationProvider>
+        </DefaultFirebaseAuthProvider>
       </Container>
     </>
   )

@@ -56,8 +56,11 @@ func (c *Web) handleGetAuthCallback() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		qs := r.URL.Query()
+		logger := logging.GetLogger(ctx)
 
 		w.Header().Set("content-type", "application/json")
+
+		logger.Infof("qs=%q", qs)
 
 		initiatorURL, err := c.githubAuthFlow.NavigateAuthCompletion(ctx, qs.Get("code"), qs.Get("state"))
 		if err != nil {
