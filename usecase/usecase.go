@@ -40,7 +40,7 @@ type Usecase interface {
 	OnDeleteAppFromOwner(ctx context.Context, owner string) error
 	OnRemoveRepositories(ctx context.Context, repos []*github.Repository) error
 	OnInstallRepositories(ctx context.Context, repos []*github.Repository) error
-	UpdateChanceTime(ctx context.Context, adapter *githubapps.GitHubAppsAdapter, baseTime time.Time) error
+	UpdateChanceTime(ctx context.Context, adapter githubapps.GitHubAppsAdapter, baseTime time.Time) error
 	PutRepositoryConfig(ctx context.Context, ghAppClient *github.Client, owner, name string, input io.Reader) error
 	UpdatePullRequestCommitStatus(ctx context.Context, client *github.Client, pr *github.PullRequest) error
 }
@@ -129,7 +129,7 @@ func (u *usecaseImpl) PutRepositoryConfig(ctx context.Context, ghAppClient *gith
 	return nil
 }
 
-func (u *usecaseImpl) UpdateChanceTime(ctx context.Context, adapter *githubapps.GitHubAppsAdapter, baseTime time.Time) error {
+func (u *usecaseImpl) UpdateChanceTime(ctx context.Context, adapter githubapps.GitHubAppsAdapter, baseTime time.Time) error {
 	logger := logging.GetLogger(ctx)
 	installations, _, err := adapter.NewAppClient().Apps.ListInstallations(ctx, nil)
 	if err != nil {
