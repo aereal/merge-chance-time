@@ -13,7 +13,7 @@ import (
 	"github.com/dimfeld/httptreemux/v5"
 )
 
-func New(authorizer *authz.Authorizer, es graphql.ExecutableSchema) (*Web, error) {
+func New(authorizer authz.Authorizer, es graphql.ExecutableSchema) (*Web, error) {
 	if es == nil {
 		return nil, fmt.Errorf("graphql.ExecutableSchema is nil")
 	}
@@ -24,7 +24,7 @@ func New(authorizer *authz.Authorizer, es graphql.ExecutableSchema) (*Web, error
 }
 
 type Web struct {
-	authorizer *authz.Authorizer
+	authorizer authz.Authorizer
 	es         graphql.ExecutableSchema
 }
 
