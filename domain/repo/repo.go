@@ -30,7 +30,6 @@ type Repository interface {
 	PutRepositoryConfigs(ctx context.Context, configs []*model.RepositoryConfig) error
 	GetRepositoryConfig(ctx context.Context, owner, name string) (*model.RepositoryConfig, error)
 	ListConfigsByOwners(ctx context.Context) (map[string][]*model.RepositoryConfig, error)
-	ListRepositoryConfigs(ctx context.Context) ([]*model.RepositoryConfig, error)
 }
 
 type repoImpl struct {
@@ -105,27 +104,6 @@ func (r *repoImpl) ListConfigsByOwners(ctx context.Context) (map[string][]*model
 		}
 		ownerName := ownerSnapshot.Ref.ID
 		configs[ownerName] = cfgs
-	}
-	return configs, nil
-}
-
-func (r *repoImpl) ListRepositoryConfigs(ctx context.Context) ([]*model.RepositoryConfig, error) {
-	ownerIter := r.firestoreClient.Collection("InstallationTarget").Documents(ctx)
-	configs := []*model.RepositoryConfig{}
-	for {
-		snapshot, err := ownerIter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		repoIter := snapshot.Ref.Collection("Repository").Documents(ctx)
-		cfgs, err := fetchRepoConfigs(ctx, repoIter)
-		if err != nil {
-			return nil, err
-		}
-		configs = append(configs, cfgs...)
 	}
 	return configs, nil
 }

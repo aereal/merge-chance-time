@@ -2,9 +2,7 @@ package usecase
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -41,7 +39,6 @@ type Usecase interface {
 	OnRemoveRepositories(ctx context.Context, repos []*github.Repository) error
 	OnInstallRepositories(ctx context.Context, repos []*github.Repository) error
 	UpdateChanceTime(ctx context.Context, adapter githubapps.GitHubAppsAdapter, baseTime time.Time) error
-	PutRepositoryConfig(ctx context.Context, ghAppClient *github.Client, owner, name string, input io.Reader) error
 	UpdatePullRequestCommitStatus(ctx context.Context, client *github.Client, pr *github.PullRequest) error
 }
 
@@ -100,33 +97,6 @@ func (u *usecaseImpl) onInstallRepository(ctx context.Context, installedRepo *gi
 			MergeAvailable: true,
 		},
 	})
-}
-
-func (u *usecaseImpl) PutRepositoryConfig(ctx context.Context, ghAppClient *github.Client, owner, name string, input io.Reader) error {
-	var cfg model.RepositoryConfig
-	if err := json.NewDecoder(input).Decode(&cfg); err != nil {
-		return fmt.Errorf("failed to decode input as JSON: %w", ErrInvalidInput)
-	}
-	cfg.Owner = owner
-	cfg.Name = name
-
-	if err := cfg.Valid(); err != nil {
-		return err
-	}
-
-	installation, _, err := ghAppClient.Apps.FindRepositoryInstallation(ctx, owner, name)
-	if err != nil {
-		return fmt.Errorf("failed to find repository installation: %w", err)
-	}
-	if installation == nil {
-		return ErrInstallationNotFound
-	}
-
-	if err := u.repo.PutRepositoryConfigs(ctx, []*model.RepositoryConfig{&cfg}); err != nil {
-		return fmt.Errorf("failed to create repository config: %w", err)
-	}
-
-	return nil
 }
 
 func (u *usecaseImpl) UpdateChanceTime(ctx context.Context, adapter githubapps.GitHubAppsAdapter, baseTime time.Time) error {

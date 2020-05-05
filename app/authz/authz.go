@@ -19,8 +19,6 @@ func New(issuer jwtissuer.Issuer) (Authorizer, error) {
 
 type Authorizer interface {
 	GetCurrentClaims(ctx context.Context) (*AppClaims, error)
-	Authenticate(ctx context.Context, token string) (context.Context, error)
-	AuthenticateWithToken(token string) (*AppClaims, error)
 	Middleware() func(next http.Handler) http.Handler
 	IssueAuthenticationToken(appClaims *AppClaims) (string, error)
 }
@@ -44,8 +42,8 @@ type keyType struct{}
 
 var ctxKeyAppClaims = &keyType{}
 
-func (a *authorizerImpl) Authenticate(ctx context.Context, token string) (context.Context, error) {
-	claims, err := a.AuthenticateWithToken(token)
+func (a *authorizerImpl) authenticate(ctx context.Context, token string) (context.Context, error) {
+	claims, err := a.authenticateWithToken(token)
 	if err != nil {
 		return ctx, err
 	}
@@ -65,14 +63,14 @@ func (a *authorizerImpl) Middleware() func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("content-type", "application/json")
 			token := strings.Replace(r.Header.Get("authorization"), "Bearer ", "", 1)
-			ctx, _ := a.Authenticate(r.Context(), token)
+			ctx, _ := a.authenticate(r.Context(), token)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-func (a *authorizerImpl) AuthenticateWithToken(token string) (*AppClaims, error) {
+func (a *authorizerImpl) authenticateWithToken(token string) (*AppClaims, error) {
 	var out Claims
 	if err := a.issuer.ParseSignedAndEncrypted(token, &out); err != nil {
 		return nil, err
