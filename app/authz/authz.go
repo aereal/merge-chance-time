@@ -10,15 +10,21 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-func New(issuer *jwtissuer.Issuer) (*Authorizer, error) {
+func New(issuer jwtissuer.Issuer) (Authorizer, error) {
 	if issuer == nil {
 		return nil, fmt.Errorf("issuer is nil")
 	}
-	return &Authorizer{issuer}, nil
+	return &authorizerImpl{issuer}, nil
 }
 
-type Authorizer struct {
-	issuer *jwtissuer.Issuer
+type Authorizer interface {
+	GetCurrentClaims(ctx context.Context) (*AppClaims, error)
+	Middleware() func(next http.Handler) http.Handler
+	IssueAuthenticationToken(appClaims *AppClaims) (string, error)
+}
+
+type authorizerImpl struct {
+	issuer jwtissuer.Issuer
 }
 
 type AppClaims struct {
@@ -36,8 +42,8 @@ type keyType struct{}
 
 var ctxKeyAppClaims = &keyType{}
 
-func (a *Authorizer) Authenticate(ctx context.Context, token string) (context.Context, error) {
-	claims, err := a.AuthenticateWithToken(token)
+func (a *authorizerImpl) authenticate(ctx context.Context, token string) (context.Context, error) {
+	claims, err := a.authenticateWithToken(token)
 	if err != nil {
 		return ctx, err
 	}
@@ -45,26 +51,26 @@ func (a *Authorizer) Authenticate(ctx context.Context, token string) (context.Co
 	return context.WithValue(ctx, ctxKeyAppClaims, claims), nil
 }
 
-func (a *Authorizer) GetCurrentClaims(ctx context.Context) (*AppClaims, error) {
+func (a *authorizerImpl) GetCurrentClaims(ctx context.Context) (*AppClaims, error) {
 	if claims, ok := ctx.Value(ctxKeyAppClaims).(*AppClaims); ok {
 		return claims, nil
 	}
 	return nil, fmt.Errorf("not authenticated")
 }
 
-func (a *Authorizer) Middleware() func(next http.Handler) http.Handler {
+func (a *authorizerImpl) Middleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("content-type", "application/json")
 			token := strings.Replace(r.Header.Get("authorization"), "Bearer ", "", 1)
-			ctx, _ := a.Authenticate(r.Context(), token)
+			ctx, _ := a.authenticate(r.Context(), token)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-func (a *Authorizer) AuthenticateWithToken(token string) (*AppClaims, error) {
+func (a *authorizerImpl) authenticateWithToken(token string) (*AppClaims, error) {
 	var out Claims
 	if err := a.issuer.ParseSignedAndEncrypted(token, &out); err != nil {
 		return nil, err
@@ -73,7 +79,7 @@ func (a *Authorizer) AuthenticateWithToken(token string) (*AppClaims, error) {
 	return out.AppClaims, nil
 }
 
-func (a *Authorizer) IssueAuthenticationToken(appClaims *AppClaims) (string, error) {
+func (a *authorizerImpl) IssueAuthenticationToken(appClaims *AppClaims) (string, error) {
 	stdClaims := jwtissuer.NewStandardClaims()
 	claims := Claims{
 		stdClaims,
