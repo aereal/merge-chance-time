@@ -18,20 +18,27 @@ type ValidatableClaims interface {
 	ValidateWithLeeway(e jwt.Expected, leeway time.Duration) error
 }
 
-func NewIssuer(privateKey *rsa.PrivateKey) (*Issuer, error) {
+func NewIssuer(privateKey *rsa.PrivateKey) (Issuer, error) {
 	if privateKey == nil {
 		return nil, fmt.Errorf("privateKey is nil")
 	}
-	return &Issuer{
+	return &issuerImpl{
 		privateKey: privateKey,
 	}, nil
 }
 
-type Issuer struct {
+type issuerImpl struct {
 	privateKey *rsa.PrivateKey
 }
 
-func (i *Issuer) newSigner() (jose.Signer, error) {
+type Issuer interface {
+	SignedAndEncrypted(claims interface{}) (string, error)
+	Signed(claims interface{}) (string, error)
+	ParseSignedAndEncrypted(token string, claims ValidatableClaims) error
+	ParseSigned(token string, claims ValidatableClaims) error
+}
+
+func (i *issuerImpl) newSigner() (jose.Signer, error) {
 	signingKey := jose.SigningKey{
 		Algorithm: jose.RS256,
 		Key:       i.privateKey,
@@ -39,7 +46,7 @@ func (i *Issuer) newSigner() (jose.Signer, error) {
 	return jose.NewSigner(signingKey, (&jose.SignerOptions{}).WithType("JWT"))
 }
 
-func (i *Issuer) newEncrypter() (jose.Encrypter, error) {
+func (i *issuerImpl) newEncrypter() (jose.Encrypter, error) {
 	recp := jose.Recipient{
 		Algorithm: jose.RSA1_5,
 		Key:       i.privateKey.Public(),
@@ -48,7 +55,7 @@ func (i *Issuer) newEncrypter() (jose.Encrypter, error) {
 	return jose.NewEncrypter(jose.A256CBC_HS512, recp, opts)
 }
 
-func (i *Issuer) SignedAndEncrypted(claims interface{}) (string, error) {
+func (i *issuerImpl) SignedAndEncrypted(claims interface{}) (string, error) {
 	signer, err := i.newSigner()
 	if err != nil {
 		return "", err
@@ -61,7 +68,7 @@ func (i *Issuer) SignedAndEncrypted(claims interface{}) (string, error) {
 	return builder.Claims(claims).CompactSerialize()
 }
 
-func (i *Issuer) Signed(claims interface{}) (string, error) {
+func (i *issuerImpl) Signed(claims interface{}) (string, error) {
 	signer, err := i.newSigner()
 	if err != nil {
 		return "", err
@@ -69,7 +76,7 @@ func (i *Issuer) Signed(claims interface{}) (string, error) {
 	return jwt.Signed(signer).Claims(claims).CompactSerialize()
 }
 
-func (i *Issuer) ParseSignedAndEncrypted(token string, claims ValidatableClaims) error {
+func (i *issuerImpl) ParseSignedAndEncrypted(token string, claims ValidatableClaims) error {
 	t, err := jwt.ParseSignedAndEncrypted(token)
 	if err != nil {
 		return err
@@ -87,7 +94,7 @@ func (i *Issuer) ParseSignedAndEncrypted(token string, claims ValidatableClaims)
 	return nil
 }
 
-func (i *Issuer) ParseSigned(token string, claims ValidatableClaims) error {
+func (i *issuerImpl) ParseSigned(token string, claims ValidatableClaims) error {
 	t, err := jwt.ParseSigned(token)
 	if err != nil {
 		return err

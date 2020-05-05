@@ -10,7 +10,7 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-func New(issuer *jwtissuer.Issuer) (*Authorizer, error) {
+func New(issuer jwtissuer.Issuer) (*Authorizer, error) {
 	if issuer == nil {
 		return nil, fmt.Errorf("issuer is nil")
 	}
@@ -18,7 +18,7 @@ func New(issuer *jwtissuer.Issuer) (*Authorizer, error) {
 }
 
 type Authorizer struct {
-	issuer *jwtissuer.Issuer
+	issuer jwtissuer.Issuer
 }
 
 type AppClaims struct {

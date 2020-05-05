@@ -23,7 +23,7 @@ type StateClaims struct {
 	State
 }
 
-func NewGitHubAuthFlow(cfg *config.Config, issuer *jwtissuer.Issuer, httpClient *http.Client, authorizer *authz.Authorizer) (*GitHubAuthFlow, error) {
+func NewGitHubAuthFlow(cfg *config.Config, issuer jwtissuer.Issuer, httpClient *http.Client, authorizer *authz.Authorizer) (*GitHubAuthFlow, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("appConfig is nil")
 	}
@@ -51,7 +51,7 @@ func NewGitHubAuthFlow(cfg *config.Config, issuer *jwtissuer.Issuer, httpClient 
 type GitHubAuthFlow struct {
 	clientID            string
 	clientSecret        string
-	issuer              *jwtissuer.Issuer
+	issuer              jwtissuer.Issuer
 	httpClient          *http.Client
 	authorizer          *authz.Authorizer
 	defaultInitiatorURL *url.URL
