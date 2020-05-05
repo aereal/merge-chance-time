@@ -11,14 +11,14 @@ import (
 	"github.com/dimfeld/httptreemux/v5"
 )
 
-func New(githubAuthFlow *authflow.GitHubAuthFlow) (*Web, error) {
+func New(githubAuthFlow authflow.GitHubAuthFlow) (*Web, error) {
 	return &Web{
 		githubAuthFlow: githubAuthFlow,
 	}, nil
 }
 
 type Web struct {
-	githubAuthFlow *authflow.GitHubAuthFlow
+	githubAuthFlow authflow.GitHubAuthFlow
 }
 
 func (s *Web) Routes() func(router *httptreemux.TreeMux) {

@@ -23,7 +23,7 @@ type StateClaims struct {
 	State
 }
 
-func NewGitHubAuthFlow(cfg *config.Config, issuer jwtissuer.Issuer, httpClient *http.Client, authorizer *authz.Authorizer) (*GitHubAuthFlow, error) {
+func NewGitHubAuthFlow(cfg *config.Config, issuer jwtissuer.Issuer, httpClient *http.Client, authorizer *authz.Authorizer) (GitHubAuthFlow, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("appConfig is nil")
 	}
@@ -38,7 +38,7 @@ func NewGitHubAuthFlow(cfg *config.Config, issuer jwtissuer.Issuer, httpClient *
 	if authorizer == nil {
 		return nil, fmt.Errorf("authroizer is nil")
 	}
-	return &GitHubAuthFlow{
+	return &gitHubAuthFlowImpl{
 		clientID:            cfg.GitHubAppConfig.ClientID,
 		clientSecret:        cfg.GitHubAppConfig.ClientSecret,
 		issuer:              issuer,
@@ -48,7 +48,12 @@ func NewGitHubAuthFlow(cfg *config.Config, issuer jwtissuer.Issuer, httpClient *
 	}, nil
 }
 
-type GitHubAuthFlow struct {
+type GitHubAuthFlow interface {
+	NavigateAuthCompletion(ctx context.Context, code, state string) (*url.URL, error)
+	NewAuthorizeURL(ctx context.Context, appOrigin string, initiatorURL string) (string, error)
+}
+
+type gitHubAuthFlowImpl struct {
 	clientID            string
 	clientSecret        string
 	issuer              jwtissuer.Issuer
@@ -57,7 +62,7 @@ type GitHubAuthFlow struct {
 	defaultInitiatorURL *url.URL
 }
 
-func (f *GitHubAuthFlow) NavigateAuthCompletion(ctx context.Context, code, state string) (*url.URL, error) {
+func (f *gitHubAuthFlowImpl) NavigateAuthCompletion(ctx context.Context, code, state string) (*url.URL, error) {
 	accessToken, err := f.createUserAccessToken(ctx, code, state)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create user access token: %w", err)
@@ -74,7 +79,7 @@ func (f *GitHubAuthFlow) NavigateAuthCompletion(ctx context.Context, code, state
 	return initiatorURL, nil
 }
 
-func (f *GitHubAuthFlow) determineInitiatorURL(state string) (*url.URL, error) {
+func (f *gitHubAuthFlowImpl) determineInitiatorURL(state string) (*url.URL, error) {
 	if state == "" {
 		return f.defaultInitiatorURL, nil
 	}
@@ -89,7 +94,7 @@ func (f *GitHubAuthFlow) determineInitiatorURL(state string) (*url.URL, error) {
 	return initiatorURL, nil
 }
 
-func (f *GitHubAuthFlow) createUserAccessToken(ctx context.Context, code, state string) (string, error) {
+func (f *gitHubAuthFlowImpl) createUserAccessToken(ctx context.Context, code, state string) (string, error) {
 	if code == "" {
 		return "", fmt.Errorf("code is empty")
 	}
@@ -124,7 +129,7 @@ func (f *GitHubAuthFlow) createUserAccessToken(ctx context.Context, code, state 
 	return token, nil
 }
 
-func (f *GitHubAuthFlow) NewAuthorizeURL(ctx context.Context, appOrigin string, initiatorURL string) (string, error) {
+func (f *gitHubAuthFlowImpl) NewAuthorizeURL(ctx context.Context, appOrigin string, initiatorURL string) (string, error) {
 	params := url.Values{}
 	params.Set("client_id", f.clientID)
 	params.Set("redirect_uri", fmt.Sprintf("%s/auth/callback", appOrigin))
@@ -137,7 +142,7 @@ func (f *GitHubAuthFlow) NewAuthorizeURL(ctx context.Context, appOrigin string, 
 	return fmt.Sprintf("%s?%s", base, params.Encode()), nil
 }
 
-func (f *GitHubAuthFlow) generateState(initiatorURL string) (string, error) {
+func (f *gitHubAuthFlowImpl) generateState(initiatorURL string) (string, error) {
 	stdClaims := jwtissuer.NewStandardClaims()
 	claims := StateClaims{
 		stdClaims,
