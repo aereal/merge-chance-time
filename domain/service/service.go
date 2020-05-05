@@ -11,21 +11,26 @@ var (
 	ctxName = "merge-chance-time"
 )
 
-func New() (*Service, error) {
-	return &Service{}, nil
+func New() (Service, error) {
+	return &serviceImpl{}, nil
 }
 
-type Service struct{}
+type Service interface {
+	ApprovePullRequest(ctx context.Context, client *github.Client, pr *github.PullRequest) error
+	PendingPullRequest(ctx context.Context, client *github.Client, pr *github.PullRequest) error
+}
 
-func (s *Service) ApprovePullRequest(ctx context.Context, client *github.Client, pr *github.PullRequest) error {
+type serviceImpl struct{}
+
+func (s *serviceImpl) ApprovePullRequest(ctx context.Context, client *github.Client, pr *github.PullRequest) error {
 	return s.createCommitStatus(ctx, client, pr, "success")
 }
 
-func (s *Service) PendingPullRequest(ctx context.Context, client *github.Client, pr *github.PullRequest) error {
+func (s *serviceImpl) PendingPullRequest(ctx context.Context, client *github.Client, pr *github.PullRequest) error {
 	return s.createCommitStatus(ctx, client, pr, "pending")
 }
 
-func (s *Service) createCommitStatus(ctx context.Context, client *github.Client, pr *github.PullRequest, state string) error {
+func (s *serviceImpl) createCommitStatus(ctx context.Context, client *github.Client, pr *github.PullRequest, state string) error {
 	head := pr.GetHead()
 	repo := head.GetRepo()
 	desc := fmt.Sprintf("%s is open", ctxName)

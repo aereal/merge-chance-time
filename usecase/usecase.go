@@ -216,7 +216,7 @@ func (u *usecaseImpl) UpdatePullRequestCommitStatus(ctx context.Context, client 
 	return srv.PendingPullRequest(ctx, client, pr)
 }
 
-func updateCommitStatuses(ctx context.Context, installClient *github.Client, install *github.Installation, cfg *model.RepositoryConfig, srv *service.Service, approve bool) error {
+func updateCommitStatuses(ctx context.Context, installClient *github.Client, install *github.Installation, cfg *model.RepositoryConfig, srv service.Service, approve bool) error {
 	prs, _, err := installClient.PullRequests.List(ctx, cfg.Owner, cfg.Name, nil)
 	if err != nil {
 		return fmt.Errorf("failed to fetch pull requests on %s/%s: %w", cfg.Owner, cfg.Name, err)
