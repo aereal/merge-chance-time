@@ -71,7 +71,7 @@ type Web struct {
 func (a *Web) Routes() func(router *httptreemux.TreeMux) {
 	return func(router *httptreemux.TreeMux) {
 		group := router.UsingContext().NewContextGroup("/app")
-		group.POST("/webhook", a.handleWebhook)
+		group.POST("/webhook", a.handleWebhook())
 		group.POST("/cron", a.handleCron())
 	}
 }
@@ -122,52 +122,54 @@ func (c *Web) handleCron() http.HandlerFunc {
 	})
 }
 
-func (c *Web) handleWebhook(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	logger := logging.GetLogger(ctx)
-	span := trace.FromContext(ctx)
+func (c *Web) handleWebhook() http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		logger := logging.GetLogger(ctx)
+		span := trace.FromContext(ctx)
 
-	webhookType := github.WebHookType(r)
-	if span != nil {
-		span.AddAttributes(
-			trace.StringAttribute("/github/webhook/type", webhookType),
-			trace.StringAttribute("/github/webhook/delivery", r.Header.Get("x-github-delivery")),
-		)
-	}
-	if webhookType == "integration_installation" || webhookType == "integration_installation_repositories" {
-		// skip old webhook type
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
+		webhookType := github.WebHookType(r)
+		if span != nil {
+			span.AddAttributes(
+				trace.StringAttribute("/github/webhook/type", webhookType),
+				trace.StringAttribute("/github/webhook/delivery", r.Header.Get("x-github-delivery")),
+			)
+		}
+		if webhookType == "integration_installation" || webhookType == "integration_installation_repositories" {
+			// skip old webhook type
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 
-	payloadBytes, err := github.ValidatePayload(r, c.githubWebhookSecret)
-	if err != nil {
-		err = fmt.Errorf("failed to validate incoming payload: %w", err)
-		logger.Error(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+		payloadBytes, err := github.ValidatePayload(r, c.githubWebhookSecret)
+		if err != nil {
+			err = fmt.Errorf("failed to validate incoming payload: %w", err)
+			logger.Error(err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-	logger.Infof("webhook request body = %s", string(payloadBytes))
-	payload, err := github.ParseWebHook(webhookType, payloadBytes)
-	if err != nil {
-		err = fmt.Errorf("failed to parse incoming payload: %w", err)
-		logger.Error(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	logger.Infof("webhook payload = %#v", payload)
+		logger.Infof("webhook request body = %s", string(payloadBytes))
+		payload, err := github.ParseWebHook(webhookType, payloadBytes)
+		if err != nil {
+			err = fmt.Errorf("failed to parse incoming payload: %w", err)
+			logger.Error(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		logger.Infof("webhook payload = %#v", payload)
 
-	switch p := payload.(type) {
-	case *github.InstallationEvent:
-		c.onInstallation(w, r, p)
-	case *github.InstallationRepositoriesEvent:
-		c.onRepositoryInstallation(w, r, p)
-	case *github.PullRequestEvent:
-		c.onPullRequest(w, r, p)
-	default:
-		w.WriteHeader(http.StatusNoContent)
-	}
+		switch p := payload.(type) {
+		case *github.InstallationEvent:
+			c.onInstallation(w, r, p)
+		case *github.InstallationRepositoriesEvent:
+			c.onRepositoryInstallation(w, r, p)
+		case *github.PullRequestEvent:
+			c.onPullRequest(w, r, p)
+		default:
+			w.WriteHeader(http.StatusNoContent)
+		}
+	})
 }
 
 func (c *Web) onPullRequest(w http.ResponseWriter, r *http.Request, payload *github.PullRequestEvent) {
