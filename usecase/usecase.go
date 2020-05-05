@@ -23,27 +23,36 @@ var (
 	ErrConfigNotFound       = fmt.Errorf("repository config not found")
 )
 
-func New(repo *repo.Repository) (*Usecase, error) {
+func New(repo *repo.Repository) (Usecase, error) {
 	if repo == nil {
 		return nil, fmt.Errorf("repo is nil")
 	}
-	return &Usecase{
+	return &usecaseImpl{
 		repo: repo,
 	}, nil
 }
 
-type Usecase struct {
+type usecaseImpl struct {
 	repo *repo.Repository
 }
 
-func (u *Usecase) OnDeleteAppFromOwner(ctx context.Context, owner string) error {
+type Usecase interface {
+	OnDeleteAppFromOwner(ctx context.Context, owner string) error
+	OnRemoveRepositories(ctx context.Context, repos []*github.Repository) error
+	OnInstallRepositories(ctx context.Context, repos []*github.Repository) error
+	UpdateChanceTime(ctx context.Context, adapter *githubapps.GitHubAppsAdapter, baseTime time.Time) error
+	PutRepositoryConfig(ctx context.Context, ghAppClient *github.Client, owner, name string, input io.Reader) error
+	UpdatePullRequestCommitStatus(ctx context.Context, client *github.Client, pr *github.PullRequest) error
+}
+
+func (u *usecaseImpl) OnDeleteAppFromOwner(ctx context.Context, owner string) error {
 	if err := u.repo.DeleteRepositoryConfigsByOwner(ctx, owner); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (u *Usecase) OnRemoveRepositories(ctx context.Context, repos []*github.Repository) error {
+func (u *usecaseImpl) OnRemoveRepositories(ctx context.Context, repos []*github.Repository) error {
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, r := range repos {
 		eg.Go(func() error {
@@ -56,7 +65,7 @@ func (u *Usecase) OnRemoveRepositories(ctx context.Context, repos []*github.Repo
 	return nil
 }
 
-func (u *Usecase) onRemoveRepository(ctx context.Context, removedRepo *github.Repository) error {
+func (u *usecaseImpl) onRemoveRepository(ctx context.Context, removedRepo *github.Repository) error {
 	parts := strings.Split(removedRepo.GetFullName(), "/")
 	if len(parts) < 2 {
 		return fmt.Errorf("invalid repo fullName")
@@ -64,7 +73,7 @@ func (u *Usecase) onRemoveRepository(ctx context.Context, removedRepo *github.Re
 	return u.repo.DeleteRepositoryConfig(ctx, parts[0], parts[1])
 }
 
-func (u *Usecase) OnInstallRepositories(ctx context.Context, repos []*github.Repository) error {
+func (u *usecaseImpl) OnInstallRepositories(ctx context.Context, repos []*github.Repository) error {
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, r := range repos {
 		eg.Go(func() error {
@@ -77,7 +86,7 @@ func (u *Usecase) OnInstallRepositories(ctx context.Context, repos []*github.Rep
 	return nil
 }
 
-func (u *Usecase) onInstallRepository(ctx context.Context, installedRepo *github.Repository) error {
+func (u *usecaseImpl) onInstallRepository(ctx context.Context, installedRepo *github.Repository) error {
 	logger := logging.GetLogger(ctx)
 	logger.Infof("install repository: %#v", installedRepo)
 	parts := strings.Split(installedRepo.GetFullName(), "/")
@@ -93,7 +102,7 @@ func (u *Usecase) onInstallRepository(ctx context.Context, installedRepo *github
 	})
 }
 
-func (u *Usecase) PutRepositoryConfig(ctx context.Context, ghAppClient *github.Client, owner, name string, input io.Reader) error {
+func (u *usecaseImpl) PutRepositoryConfig(ctx context.Context, ghAppClient *github.Client, owner, name string, input io.Reader) error {
 	var cfg model.RepositoryConfig
 	if err := json.NewDecoder(input).Decode(&cfg); err != nil {
 		return fmt.Errorf("failed to decode input as JSON: %w", ErrInvalidInput)
@@ -120,7 +129,7 @@ func (u *Usecase) PutRepositoryConfig(ctx context.Context, ghAppClient *github.C
 	return nil
 }
 
-func (u *Usecase) UpdateChanceTime(ctx context.Context, adapter *githubapps.GitHubAppsAdapter, baseTime time.Time) error {
+func (u *usecaseImpl) UpdateChanceTime(ctx context.Context, adapter *githubapps.GitHubAppsAdapter, baseTime time.Time) error {
 	logger := logging.GetLogger(ctx)
 	installations, _, err := adapter.NewAppClient().Apps.ListInstallations(ctx, nil)
 	if err != nil {
@@ -183,7 +192,7 @@ func (u *Usecase) UpdateChanceTime(ctx context.Context, adapter *githubapps.GitH
 	return nil
 }
 
-func (u *Usecase) UpdatePullRequestCommitStatus(ctx context.Context, client *github.Client, pr *github.PullRequest) error {
+func (u *usecaseImpl) UpdatePullRequestCommitStatus(ctx context.Context, client *github.Client, pr *github.PullRequest) error {
 	targetRepo := pr.GetHead().GetRepo()
 	config, err := u.repo.GetRepositoryConfig(ctx, targetRepo.GetOwner().GetLogin(), targetRepo.GetName())
 	if err == repo.ErrNotFound {

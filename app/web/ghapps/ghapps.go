@@ -45,7 +45,7 @@ func (t PublishTime) String() string {
 	return time.Time(t).Format(time.RFC3339Nano)
 }
 
-func New(cfg *config.GitHubAppConfig, ghAdapter *githubapps.GitHubAppsAdapter, uc *usecase.Usecase) (*Web, error) {
+func New(cfg *config.GitHubAppConfig, ghAdapter *githubapps.GitHubAppsAdapter, uc usecase.Usecase) (*Web, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("cfg is nil")
 	}
@@ -65,7 +65,7 @@ func New(cfg *config.GitHubAppConfig, ghAdapter *githubapps.GitHubAppsAdapter, u
 type Web struct {
 	githubWebhookSecret []byte
 	ghAdapter           *githubapps.GitHubAppsAdapter
-	usecase             *usecase.Usecase
+	usecase             usecase.Usecase
 }
 
 func (a *Web) Routes() func(router *httptreemux.TreeMux) {
