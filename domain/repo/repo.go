@@ -15,20 +15,29 @@ var (
 	ErrNotFound = fmt.Errorf("not found")
 )
 
-func New(firestoreClient *firestore.Client) (*Repository, error) {
+func New(firestoreClient *firestore.Client) (Repository, error) {
 	if firestoreClient == nil {
 		return nil, fmt.Errorf("firestoreClient is nil")
 	}
-	return &Repository{
+	return &repoImpl{
 		firestoreClient: firestoreClient,
 	}, nil
 }
 
-type Repository struct {
+type Repository interface {
+	DeleteRepositoryConfig(ctx context.Context, owner, name string) error
+	DeleteRepositoryConfigsByOwner(ctx context.Context, owner string) error
+	PutRepositoryConfigs(ctx context.Context, configs []*model.RepositoryConfig) error
+	GetRepositoryConfig(ctx context.Context, owner, name string) (*model.RepositoryConfig, error)
+	ListConfigsByOwners(ctx context.Context) (map[string][]*model.RepositoryConfig, error)
+	ListRepositoryConfigs(ctx context.Context) ([]*model.RepositoryConfig, error)
+}
+
+type repoImpl struct {
 	firestoreClient *firestore.Client
 }
 
-func (r *Repository) DeleteRepositoryConfig(ctx context.Context, owner, name string) error {
+func (r *repoImpl) DeleteRepositoryConfig(ctx context.Context, owner, name string) error {
 	ref := r.firestoreClient.Collection("InstallationTarget").Doc(owner).Collection("Repository").Doc(name)
 	_, err := ref.Delete(ctx)
 	if err != nil {
@@ -37,7 +46,7 @@ func (r *Repository) DeleteRepositoryConfig(ctx context.Context, owner, name str
 	return nil
 }
 
-func (r *Repository) DeleteRepositoryConfigsByOwner(ctx context.Context, owner string) error {
+func (r *repoImpl) DeleteRepositoryConfigsByOwner(ctx context.Context, owner string) error {
 	_, err := r.firestoreClient.Collection("InstallationTarget").Doc(owner).Delete(ctx)
 	if err != nil {
 		return err
@@ -45,7 +54,7 @@ func (r *Repository) DeleteRepositoryConfigsByOwner(ctx context.Context, owner s
 	return nil
 }
 
-func (r *Repository) PutRepositoryConfigs(ctx context.Context, configs []*model.RepositoryConfig) error {
+func (r *repoImpl) PutRepositoryConfigs(ctx context.Context, configs []*model.RepositoryConfig) error {
 	dtos := []*dtoRepositoryConfig{}
 	for _, config := range configs {
 		dto := &dtoRepositoryConfig{
@@ -67,7 +76,7 @@ func (r *Repository) PutRepositoryConfigs(ctx context.Context, configs []*model.
 	return err
 }
 
-func (r *Repository) GetRepositoryConfig(ctx context.Context, owner, name string) (*model.RepositoryConfig, error) {
+func (r *repoImpl) GetRepositoryConfig(ctx context.Context, owner, name string) (*model.RepositoryConfig, error) {
 	snapshot, err := r.firestoreClient.Collection("InstallationTarget").Doc(owner).Collection("Repository").Doc(name).Get(ctx)
 	if status.Code(err) == codes.NotFound {
 		return nil, ErrNotFound
@@ -78,7 +87,7 @@ func (r *Repository) GetRepositoryConfig(ctx context.Context, owner, name string
 	return repoFrom(snapshot)
 }
 
-func (r *Repository) ListConfigsByOwners(ctx context.Context) (map[string][]*model.RepositoryConfig, error) {
+func (r *repoImpl) ListConfigsByOwners(ctx context.Context) (map[string][]*model.RepositoryConfig, error) {
 	ownerIter := r.firestoreClient.Collection("InstallationTarget").Documents(ctx)
 	configs := map[string][]*model.RepositoryConfig{}
 	for {
@@ -100,7 +109,7 @@ func (r *Repository) ListConfigsByOwners(ctx context.Context) (map[string][]*mod
 	return configs, nil
 }
 
-func (r *Repository) ListRepositoryConfigs(ctx context.Context) ([]*model.RepositoryConfig, error) {
+func (r *repoImpl) ListRepositoryConfigs(ctx context.Context) ([]*model.RepositoryConfig, error) {
 	ownerIter := r.firestoreClient.Collection("InstallationTarget").Documents(ctx)
 	configs := []*model.RepositoryConfig{}
 	for {

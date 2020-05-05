@@ -23,7 +23,7 @@ var (
 	ErrConfigNotFound       = fmt.Errorf("repository config not found")
 )
 
-func New(repo *repo.Repository) (Usecase, error) {
+func New(repo repo.Repository) (Usecase, error) {
 	if repo == nil {
 		return nil, fmt.Errorf("repo is nil")
 	}
@@ -33,7 +33,7 @@ func New(repo *repo.Repository) (Usecase, error) {
 }
 
 type usecaseImpl struct {
-	repo *repo.Repository
+	repo repo.Repository
 }
 
 type Usecase interface {

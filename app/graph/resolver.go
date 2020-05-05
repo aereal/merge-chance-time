@@ -10,7 +10,7 @@ import (
 	"github.com/aereal/merge-chance-time/domain/repo"
 )
 
-func New(authorizer *authz.Authorizer, ghAdapter *githubapps.GitHubAppsAdapter, repo *repo.Repository) (*Resolver, error) {
+func New(authorizer *authz.Authorizer, ghAdapter *githubapps.GitHubAppsAdapter, repo repo.Repository) (*Resolver, error) {
 	if authorizer == nil {
 		return nil, fmt.Errorf("authorizer is nil")
 	}
@@ -30,5 +30,5 @@ func New(authorizer *authz.Authorizer, ghAdapter *githubapps.GitHubAppsAdapter, 
 type Resolver struct {
 	authorizer *authz.Authorizer
 	ghAdapter  *githubapps.GitHubAppsAdapter
-	repo       *repo.Repository
+	repo       repo.Repository
 }
