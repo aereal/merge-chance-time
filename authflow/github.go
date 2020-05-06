@@ -1,3 +1,5 @@
+//go:generate mockgen -package authflow -destination authflow_mock.go . GitHubAuthFlow
+
 package authflow
 
 import (
