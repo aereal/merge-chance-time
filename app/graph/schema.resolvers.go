@@ -19,7 +19,7 @@ func (r *installationResolver) InstalledRepositories(ctx context.Context, obj *d
 	}
 	client := r.ghAdapter.NewUserClient(ctx, claims.AccessToken)
 
-	rs, _, err := client.Apps.ListUserRepos(ctx, obj.ID, nil)
+	rs, _, err := client.Apps().ListUserRepos(ctx, obj.ID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (r *queryResolver) Repository(ctx context.Context, owner string, name strin
 		return nil, err
 	}
 	client := r.ghAdapter.NewUserClient(ctx, claims.AccessToken)
-	ghRepo, _, err := client.Repositories.Get(ctx, owner, name)
+	ghRepo, _, err := client.Repositories().Get(ctx, owner, name)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (r *visitorResolver) Login(ctx context.Context, obj *dto.Visitor) (string, 
 		return "", err
 	}
 	client := r.ghAdapter.NewUserClient(ctx, claims.AccessToken)
-	user, _, err := client.Users.Get(ctx, "")
+	user, _, err := client.Users().Get(ctx, "")
 	if err != nil {
 		return "", err
 	}
@@ -114,7 +114,7 @@ func (r *visitorResolver) Installations(ctx context.Context, obj *dto.Visitor) (
 		return nil, err
 	}
 	client := r.ghAdapter.NewUserClient(ctx, claims.AccessToken)
-	installations, _, err := client.Apps.ListUserInstallations(ctx, nil)
+	installations, _, err := client.Apps().ListUserInstallations(ctx, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/aereal/merge-chance-time/logging"
 	"github.com/dimfeld/httptreemux/v5"
 	"github.com/rs/cors"
+	stackdriverlog "github.com/yfuruyama/stackdriver-request-context-log"
 	"go.opencensus.io/plugin/ochttp"
 )
 
@@ -65,7 +66,8 @@ func (w *Web) handler() http.Handler {
 		AllowCredentials: true,
 		AllowedHeaders:   []string{"*"},
 	})
-	router.UseHandler(logging.WithLogger(w.projectID))
+	cfg := stackdriverlog.NewConfig(w.projectID)
+	router.UseHandler(logging.WithLogger(cfg))
 	router.UseHandler(mw.Handler)
 	router.UseHandler(withDefaultHeaders)
 	router.UsingContext().Handler(http.MethodGet, "/", http.HandlerFunc(handleRoot))

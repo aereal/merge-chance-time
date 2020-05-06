@@ -1,3 +1,5 @@
+//go:generate mockgen -package authz -destination authz_mock.go . Authorizer
+
 package authz
 
 import (
