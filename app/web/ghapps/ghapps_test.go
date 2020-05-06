@@ -3,6 +3,7 @@ package ghapps
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -41,7 +42,7 @@ func TestCron(t *testing.T) {
 			statusCode: http.StatusNoContent,
 			buildUsecase: func(ctrl *gomock.Controller) usecase.Usecase {
 				uc := usecase.NewMockUsecase(ctrl)
-				uc.EXPECT().UpdateChanceTime(gomock.Any(), gomock.Any(), gomock.Eq(now)).AnyTimes()
+				uc.EXPECT().UpdateChanceTime(gomock.Any(), gomock.Any(), eqTime(now)).AnyTimes()
 				return uc
 			},
 		},
@@ -91,4 +92,29 @@ func TestCron(t *testing.T) {
 			}
 		})
 	}
+}
+
+type timeMatcher struct {
+	expected time.Time
+}
+
+func (m timeMatcher) Matches(x interface{}) bool {
+	t, ok := x.(time.Time)
+	if !ok {
+		return false
+	}
+	return t.Equal(m.expected)
+}
+
+func (m timeMatcher) String() string {
+	return fmt.Sprintf("is equal to %s (%#v)", m.expected, m.expected)
+}
+
+func eqTime(expected time.Time) gomock.Matcher {
+	return gomock.GotFormatterAdapter(
+		gomock.GotFormatterFunc(func(i interface{}) string {
+			return fmt.Sprintf("%s (%#v)", i, i)
+		}),
+		timeMatcher{expected},
+	)
 }
