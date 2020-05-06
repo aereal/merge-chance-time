@@ -1,3 +1,5 @@
+//go:generate mockgen -package githubapps -destination adapter_mock.go . GitHubAppsAdapter
+
 package githubapps
 
 import (
