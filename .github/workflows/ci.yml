@@ -23,7 +23,12 @@ jobs:
       - name: install
         run: go get -v all
       - name: test
-        run: go test -cover -v ./...
+        run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+      - name: upload coverage to codecov
+        run: |
+          bash <(curl -s https://codecov.io/bash)
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       - name: lint
         uses: reviewdog/action-golangci-lint@v1
         with:
