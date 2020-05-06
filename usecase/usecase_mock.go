@@ -6,6 +6,7 @@ package usecase
 
 import (
 	context "context"
+	githubapi "github.com/aereal/merge-chance-time/app/adapter/githubapi"
 	githubapps "github.com/aereal/merge-chance-time/app/adapter/githubapps"
 	gomock "github.com/golang/mock/gomock"
 	github "github.com/google/go-github/v30/github"
@@ -93,7 +94,7 @@ func (mr *MockUsecaseMockRecorder) UpdateChanceTime(arg0, arg1, arg2 interface{}
 }
 
 // UpdatePullRequestCommitStatus mocks base method
-func (m *MockUsecase) UpdatePullRequestCommitStatus(arg0 context.Context, arg1 *github.Client, arg2 *github.PullRequest) error {
+func (m *MockUsecase) UpdatePullRequestCommitStatus(arg0 context.Context, arg1 *githubapi.Client, arg2 *github.PullRequest) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdatePullRequestCommitStatus", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

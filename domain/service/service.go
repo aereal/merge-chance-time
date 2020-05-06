@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/aereal/merge-chance-time/app/adapter/githubapi"
 	"github.com/google/go-github/v30/github"
 )
 
@@ -16,21 +17,21 @@ func New() (Service, error) {
 }
 
 type Service interface {
-	ApprovePullRequest(ctx context.Context, client *github.Client, pr *github.PullRequest) error
-	PendingPullRequest(ctx context.Context, client *github.Client, pr *github.PullRequest) error
+	ApprovePullRequest(ctx context.Context, client *githubapi.Client, pr *github.PullRequest) error
+	PendingPullRequest(ctx context.Context, client *githubapi.Client, pr *github.PullRequest) error
 }
 
 type serviceImpl struct{}
 
-func (s *serviceImpl) ApprovePullRequest(ctx context.Context, client *github.Client, pr *github.PullRequest) error {
+func (s *serviceImpl) ApprovePullRequest(ctx context.Context, client *githubapi.Client, pr *github.PullRequest) error {
 	return s.createCommitStatus(ctx, client, pr, "success")
 }
 
-func (s *serviceImpl) PendingPullRequest(ctx context.Context, client *github.Client, pr *github.PullRequest) error {
+func (s *serviceImpl) PendingPullRequest(ctx context.Context, client *githubapi.Client, pr *github.PullRequest) error {
 	return s.createCommitStatus(ctx, client, pr, "pending")
 }
 
-func (s *serviceImpl) createCommitStatus(ctx context.Context, client *github.Client, pr *github.PullRequest, state string) error {
+func (s *serviceImpl) createCommitStatus(ctx context.Context, client *githubapi.Client, pr *github.PullRequest, state string) error {
 	head := pr.GetHead()
 	repo := head.GetRepo()
 	desc := fmt.Sprintf("%s is open", ctxName)
