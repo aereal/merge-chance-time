@@ -1,4 +1,4 @@
-//go:generate mockgen -package githubapi -destination api_mock.go . RepositoriesService,PullRequestService,AppsService,UsersService
+//go:generate mockgen -package githubapi -destination api_mock.go . Client,RepositoriesService,PullRequestService,AppsService,UsersService
 
 package githubapi
 

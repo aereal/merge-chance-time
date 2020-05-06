@@ -6,10 +6,9 @@ package githubapps
 
 import (
 	context "context"
-	reflect "reflect"
-
 	githubapi "github.com/aereal/merge-chance-time/app/adapter/githubapi"
 	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
 // MockGitHubAppsAdapter is a mock of GitHubAppsAdapter interface
