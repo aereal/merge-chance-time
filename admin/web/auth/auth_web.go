@@ -32,9 +32,11 @@ func (s *Web) Routes() func(router *httptreemux.TreeMux) {
 func (c *Web) handleGetAuthStart() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		logger := logging.GetLogger(ctx)
 
 		initiatorURL, err := getInitiatorURL(r)
 		if err != nil {
+			logger.Errorf("getInitiatorURL: %v", err)
 			w.Header().Set("content-type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
@@ -94,14 +96,18 @@ func getInitiatorURL(r *http.Request) (*url.URL, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL: %w", err)
 	}
-	referrer, err := url.Parse(r.Referer())
+	rawReferrer := r.Referer()
+	if rawReferrer == "" {
+		return nil, fmt.Errorf("referer is empty")
+	}
+	referrer, err := url.Parse(rawReferrer)
 	if err != nil {
 		return nil, fmt.Errorf("referrer is invalid URL: %w", err)
 	}
 	initiatorOrigin := origin(parsed)
 	referrerOrigin := origin(referrer)
 	logger := logging.GetLogger(r.Context())
-	logger.Infof("initiatorOrigin=%s referrerOrigin=%s", initiatorOrigin, referrerOrigin)
+	logger.Infof("initiator=%s initiatorOrigin=%s referrer=%s referrerOrigin=%s", parsed, initiatorOrigin, referrer, referrerOrigin)
 	if initiatorOrigin != referrerOrigin {
 		return nil, fmt.Errorf("origin of initiator_url and referrer are different")
 	}
