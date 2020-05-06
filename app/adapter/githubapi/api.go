@@ -8,20 +8,37 @@ import (
 	"github.com/google/go-github/v30/github"
 )
 
-func New(client *github.Client) *Client {
-	return &Client{
-		Repositories: client.Repositories,
-		PullRequests: client.PullRequests,
-		Apps:         client.Apps,
-		Users:        client.Users,
+func New(client *github.Client) Client {
+	return &clientImpl{
+		ghClient: client,
 	}
 }
 
-type Client struct {
-	Repositories RepositoriesService
-	PullRequests PullRequestService
-	Apps         AppsService
-	Users        UsersService
+type Client interface {
+	Apps() AppsService
+	PullRequests() PullRequestService
+	Repositories() RepositoriesService
+	Users() UsersService
+}
+
+type clientImpl struct {
+	ghClient *github.Client
+}
+
+func (c *clientImpl) Apps() AppsService {
+	return c.ghClient.Apps
+}
+
+func (c *clientImpl) PullRequests() PullRequestService {
+	return c.ghClient.PullRequests
+}
+
+func (c *clientImpl) Repositories() RepositoriesService {
+	return c.ghClient.Repositories
+}
+
+func (c *clientImpl) Users() UsersService {
+	return c.ghClient.Users
 }
 
 type RepositoriesService interface {

@@ -42,7 +42,7 @@ type Usecase interface {
 	OnRemoveRepositories(ctx context.Context, repos []*github.Repository) error
 	OnInstallRepositories(ctx context.Context, repos []*github.Repository) error
 	UpdateChanceTime(ctx context.Context, adapter githubapps.GitHubAppsAdapter, baseTime time.Time) error
-	UpdatePullRequestCommitStatus(ctx context.Context, client *githubapi.Client, pr *github.PullRequest) error
+	UpdatePullRequestCommitStatus(ctx context.Context, client githubapi.Client, pr *github.PullRequest) error
 }
 
 func (u *usecaseImpl) OnDeleteAppFromOwner(ctx context.Context, owner string) error {
@@ -104,7 +104,7 @@ func (u *usecaseImpl) onInstallRepository(ctx context.Context, installedRepo *gi
 
 func (u *usecaseImpl) UpdateChanceTime(ctx context.Context, adapter githubapps.GitHubAppsAdapter, baseTime time.Time) error {
 	logger := logging.GetLogger(ctx)
-	installations, _, err := adapter.NewAppClient().Apps.ListInstallations(ctx, nil)
+	installations, _, err := adapter.NewAppClient().Apps().ListInstallations(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func (u *usecaseImpl) UpdateChanceTime(ctx context.Context, adapter githubapps.G
 	return nil
 }
 
-func (u *usecaseImpl) UpdatePullRequestCommitStatus(ctx context.Context, client *githubapi.Client, pr *github.PullRequest) error {
+func (u *usecaseImpl) UpdatePullRequestCommitStatus(ctx context.Context, client githubapi.Client, pr *github.PullRequest) error {
 	targetRepo := pr.GetHead().GetRepo()
 	config, err := u.repo.GetRepositoryConfig(ctx, targetRepo.GetOwner().GetLogin(), targetRepo.GetName())
 	if err == repo.ErrNotFound {
@@ -189,8 +189,8 @@ func (u *usecaseImpl) UpdatePullRequestCommitStatus(ctx context.Context, client 
 	return srv.PendingPullRequest(ctx, client, pr)
 }
 
-func updateCommitStatuses(ctx context.Context, installClient *githubapi.Client, install *github.Installation, cfg *model.RepositoryConfig, srv service.Service, approve bool) error {
-	prs, _, err := installClient.PullRequests.List(ctx, cfg.Owner, cfg.Name, nil)
+func updateCommitStatuses(ctx context.Context, installClient githubapi.Client, install *github.Installation, cfg *model.RepositoryConfig, srv service.Service, approve bool) error {
+	prs, _, err := installClient.PullRequests().List(ctx, cfg.Owner, cfg.Name, nil)
 	if err != nil {
 		return fmt.Errorf("failed to fetch pull requests on %s/%s: %w", cfg.Owner, cfg.Name, err)
 	}

@@ -6,9 +6,10 @@ package githubapps
 
 import (
 	context "context"
+	reflect "reflect"
+
 	githubapi "github.com/aereal/merge-chance-time/app/adapter/githubapi"
 	gomock "github.com/golang/mock/gomock"
-	reflect "reflect"
 )
 
 // MockGitHubAppsAdapter is a mock of GitHubAppsAdapter interface
@@ -35,10 +36,10 @@ func (m *MockGitHubAppsAdapter) EXPECT() *MockGitHubAppsAdapterMockRecorder {
 }
 
 // NewAppClient mocks base method
-func (m *MockGitHubAppsAdapter) NewAppClient() *githubapi.Client {
+func (m *MockGitHubAppsAdapter) NewAppClient() githubapi.Client {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewAppClient")
-	ret0, _ := ret[0].(*githubapi.Client)
+	ret0, _ := ret[0].(githubapi.Client)
 	return ret0
 }
 
@@ -49,10 +50,10 @@ func (mr *MockGitHubAppsAdapterMockRecorder) NewAppClient() *gomock.Call {
 }
 
 // NewInstallationClient mocks base method
-func (m *MockGitHubAppsAdapter) NewInstallationClient(arg0 int64) *githubapi.Client {
+func (m *MockGitHubAppsAdapter) NewInstallationClient(arg0 int64) githubapi.Client {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewInstallationClient", arg0)
-	ret0, _ := ret[0].(*githubapi.Client)
+	ret0, _ := ret[0].(githubapi.Client)
 	return ret0
 }
 
@@ -63,10 +64,10 @@ func (mr *MockGitHubAppsAdapterMockRecorder) NewInstallationClient(arg0 interfac
 }
 
 // NewUserClient mocks base method
-func (m *MockGitHubAppsAdapter) NewUserClient(arg0 context.Context, arg1 string) *githubapi.Client {
+func (m *MockGitHubAppsAdapter) NewUserClient(arg0 context.Context, arg1 string) githubapi.Client {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewUserClient", arg0, arg1)
-	ret0, _ := ret[0].(*githubapi.Client)
+	ret0, _ := ret[0].(githubapi.Client)
 	return ret0
 }
 
