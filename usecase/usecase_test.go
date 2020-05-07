@@ -37,6 +37,15 @@ func Test_usecaseImpl_onInstallRepository(t *testing.T) {
 								Owner:          "aereal",
 								Name:           "example-repo",
 								MergeAvailable: true,
+								Schedules: &model.MergeChanceSchedules{
+									Sunday:    nil,
+									Monday:    model.WholeDay,
+									Tuesday:   model.WholeDay,
+									Wednesday: model.WholeDay,
+									Thursday:  model.WholeDay,
+									Friday:    model.WholeDay,
+									Saturday:  nil,
+								},
 							},
 						})).
 						Return(nil).

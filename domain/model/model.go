@@ -10,6 +10,8 @@ type MergeChanceSchedule struct {
 	StopHour  int
 }
 
+var WholeDay = &MergeChanceSchedule{StartHour: 0, StopHour: 23}
+
 type MergeChanceSchedules struct {
 	Sunday    *MergeChanceSchedule
 	Monday    *MergeChanceSchedule
