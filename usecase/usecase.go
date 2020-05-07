@@ -98,6 +98,15 @@ func (u *usecaseImpl) onInstallRepository(ctx context.Context, installedRepo *gi
 			Owner:          parts[0],
 			Name:           parts[1],
 			MergeAvailable: true,
+			Schedules: &model.MergeChanceSchedules{
+				Sunday:    nil,
+				Monday:    model.WholeDay,
+				Tuesday:   model.WholeDay,
+				Wednesday: model.WholeDay,
+				Thursday:  model.WholeDay,
+				Friday:    model.WholeDay,
+				Saturday:  nil,
+			},
 		},
 	})
 }
