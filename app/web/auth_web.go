@@ -1,4 +1,4 @@
-package auth
+package web
 
 import (
 	"encoding/json"
@@ -6,28 +6,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/aereal/merge-chance-time/authflow"
 	"github.com/aereal/merge-chance-time/logging"
-	"github.com/dimfeld/httptreemux/v5"
 )
-
-func New(githubAuthFlow authflow.GitHubAuthFlow) (*Web, error) {
-	return &Web{
-		githubAuthFlow: githubAuthFlow,
-	}, nil
-}
-
-type Web struct {
-	githubAuthFlow authflow.GitHubAuthFlow
-}
-
-func (s *Web) Routes() func(router *httptreemux.TreeMux) {
-	return func(router *httptreemux.TreeMux) {
-		group := router.UsingContext().NewContextGroup("/auth")
-		group.GET("/start", s.handleGetAuthStart())
-		group.GET("/callback", s.handleGetAuthCallback())
-	}
-}
 
 func (c *Web) handleGetAuthStart() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

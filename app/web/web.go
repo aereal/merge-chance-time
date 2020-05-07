@@ -7,6 +7,7 @@ import (
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
 	"github.com/aereal/merge-chance-time/app/config"
+	"github.com/aereal/merge-chance-time/authflow"
 	"github.com/aereal/merge-chance-time/logging"
 	"github.com/aereal/merge-chance-time/usecase"
 	"github.com/dimfeld/httptreemux/v5"
@@ -17,7 +18,7 @@ import (
 
 type Handler func(router *httptreemux.TreeMux)
 
-func New(onGAE bool, cfg *config.Config, ghAdapter githubapps.GitHubAppsAdapter, uc usecase.Usecase, handlers ...Handler) *Web {
+func New(onGAE bool, cfg *config.Config, ghAdapter githubapps.GitHubAppsAdapter, uc usecase.Usecase, af authflow.GitHubAuthFlow, handlers ...Handler) *Web {
 	return &Web{
 		onGAE:               onGAE,
 		projectID:           cfg.GCPProjectID,
@@ -26,6 +27,7 @@ func New(onGAE bool, cfg *config.Config, ghAdapter githubapps.GitHubAppsAdapter,
 		githubWebhookSecret: cfg.GitHubAppConfig.WebhookSecret,
 		ghAdapter:           ghAdapter,
 		usecase:             uc,
+		githubAuthFlow:      af,
 	}
 }
 
@@ -37,6 +39,7 @@ type Web struct {
 	githubWebhookSecret []byte
 	ghAdapter           githubapps.GitHubAppsAdapter
 	usecase             usecase.Usecase
+	githubAuthFlow      authflow.GitHubAuthFlow
 }
 
 func (w *Web) Server(port string) *http.Server {
@@ -83,6 +86,10 @@ func (w *Web) handler() http.Handler {
 	group := router.UsingContext().NewContextGroup("/app")
 	group.POST("/webhook", w.handleWebhook())
 	group.POST("/cron", w.handleCron())
+
+	auth := router.UsingContext().NewContextGroup("/auth")
+	auth.GET("/start", w.handleGetAuthStart())
+	auth.GET("/callback", w.handleGetAuthCallback())
 
 	for _, h := range w.handlers {
 		h(router)
