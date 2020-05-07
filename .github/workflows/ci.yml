@@ -93,9 +93,14 @@ jobs:
           reporter: github-pr-review
           eslint_flags: '--ext .ts front/src/**/*'
       - name: test
-        run: yarn test
+        run: yarn workspace admin-front test:ci
         env:
           CI: true
+      - name: upload coverage
+        run:
+          npx codecov
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       - name: build
         if: github.ref == 'refs/heads/master'
         run: |

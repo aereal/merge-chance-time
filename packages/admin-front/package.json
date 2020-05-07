@@ -78,6 +78,7 @@
     "start": "node scripts/start.js",
     "build": "node scripts/build.js",
     "test": "node scripts/test.js",
+    "test:ci": "yarn test --collectCoverage --coverageDirectory ./coverage/",
     "codegen": "apollo client:codegen --addTypename --localSchemaFile=../../schema.gql --target=typescript --useReadOnlyTypes --includes=./**/*.tsx --globalTypesFile=src/globalTypes.ts",
     "codegen:watch": "yarn run codegen --watch"
   },
