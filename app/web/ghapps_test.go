@@ -1,4 +1,4 @@
-package ghapps
+package web
 
 import (
 	"bytes"

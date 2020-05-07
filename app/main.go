@@ -22,7 +22,6 @@ import (
 	"github.com/aereal/merge-chance-time/app/graph"
 	"github.com/aereal/merge-chance-time/app/graph/generated"
 	"github.com/aereal/merge-chance-time/app/web"
-	"github.com/aereal/merge-chance-time/app/web/ghapps"
 	"github.com/aereal/merge-chance-time/authflow"
 	"github.com/aereal/merge-chance-time/domain/repo"
 	"github.com/aereal/merge-chance-time/jwtissuer"
@@ -117,11 +116,6 @@ func run() error {
 		return err
 	}
 
-	ga, err := ghapps.New(cfg.GitHubAppConfig, ghAdapter, uc)
-	if err != nil {
-		return err
-	}
-
 	resolver, err := graph.New(authorizer, ghAdapter, r)
 	if err != nil {
 		return err
@@ -138,7 +132,7 @@ func run() error {
 		return err
 	}
 
-	w := web.New(onGAE, cfg, ga.Routes(), a.Routes(), authWeb.Routes())
+	w := web.New(onGAE, cfg, ghAdapter, uc, a.Routes(), authWeb.Routes())
 	server := w.Server(cfg.ListenPort)
 	go graceful(ctx, server, 5*time.Second)
 

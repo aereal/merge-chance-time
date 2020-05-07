@@ -1,4 +1,4 @@
-package ghapps
+package web
 
 import (
 	"encoding/json"
@@ -6,11 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
-	"github.com/aereal/merge-chance-time/app/config"
 	"github.com/aereal/merge-chance-time/logging"
 	"github.com/aereal/merge-chance-time/usecase"
-	"github.com/dimfeld/httptreemux/v5"
 	"github.com/google/go-github/v30/github"
 	"go.opencensus.io/trace"
 )
@@ -43,37 +40,6 @@ func (t PublishTime) MarshalText() ([]byte, error) {
 
 func (t PublishTime) String() string {
 	return time.Time(t).Format(time.RFC3339Nano)
-}
-
-func New(cfg *config.GitHubAppConfig, ghAdapter githubapps.GitHubAppsAdapter, uc usecase.Usecase) (*Web, error) {
-	if cfg == nil {
-		return nil, fmt.Errorf("cfg is nil")
-	}
-	if ghAdapter == nil {
-		return nil, fmt.Errorf("ghAdapter is nil")
-	}
-	if uc == nil {
-		return nil, fmt.Errorf("uc is nil")
-	}
-	return &Web{
-		githubWebhookSecret: cfg.WebhookSecret,
-		ghAdapter:           ghAdapter,
-		usecase:             uc,
-	}, nil
-}
-
-type Web struct {
-	githubWebhookSecret []byte
-	ghAdapter           githubapps.GitHubAppsAdapter
-	usecase             usecase.Usecase
-}
-
-func (a *Web) Routes() func(router *httptreemux.TreeMux) {
-	return func(router *httptreemux.TreeMux) {
-		group := router.UsingContext().NewContextGroup("/app")
-		group.POST("/webhook", a.handleWebhook())
-		group.POST("/cron", a.handleCron())
-	}
 }
 
 func (c *Web) handleCron() http.HandlerFunc {
