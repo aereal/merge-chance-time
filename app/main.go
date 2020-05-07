@@ -14,15 +14,12 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"contrib.go.opencensus.io/exporter/stackdriver"
-	"github.com/aereal/merge-chance-time/admin/web/api"
-	"github.com/aereal/merge-chance-time/admin/web/auth"
 	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
 	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/aereal/merge-chance-time/app/config"
 	"github.com/aereal/merge-chance-time/app/graph"
 	"github.com/aereal/merge-chance-time/app/graph/generated"
 	"github.com/aereal/merge-chance-time/app/web"
-	"github.com/aereal/merge-chance-time/app/web/ghapps"
 	"github.com/aereal/merge-chance-time/authflow"
 	"github.com/aereal/merge-chance-time/domain/repo"
 	"github.com/aereal/merge-chance-time/jwtissuer"
@@ -117,28 +114,13 @@ func run() error {
 		return err
 	}
 
-	ga, err := ghapps.New(cfg.GitHubAppConfig, ghAdapter, uc)
-	if err != nil {
-		return err
-	}
-
 	resolver, err := graph.New(authorizer, ghAdapter, r)
 	if err != nil {
 		return err
 	}
 	es := generated.NewExecutableSchema(generated.Config{Resolvers: resolver})
 
-	a, err := api.New(authorizer, es)
-	if err != nil {
-		return err
-	}
-
-	authWeb, err := auth.New(ghAuthFlow)
-	if err != nil {
-		return err
-	}
-
-	w := web.New(onGAE, cfg, ga.Routes(), a.Routes(), authWeb.Routes())
+	w := web.New(onGAE, cfg, ghAdapter, uc, ghAuthFlow, authorizer, es)
 	server := w.Server(cfg.ListenPort)
 	go graceful(ctx, server, 5*time.Second)
 

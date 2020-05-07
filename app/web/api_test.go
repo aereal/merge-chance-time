@@ -1,9 +1,8 @@
-package api
+package web
 
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -16,18 +15,11 @@ import (
 	"github.com/aereal/merge-chance-time/app/graph"
 	"github.com/aereal/merge-chance-time/app/graph/generated"
 	"github.com/aereal/merge-chance-time/domain/repo"
-	"github.com/aereal/merge-chance-time/logging"
-	"github.com/dimfeld/httptreemux/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v30/github"
-	stackdriverlog "github.com/yfuruyama/stackdriver-request-context-log"
 )
 
-func TestStart(t *testing.T) {
-	cfg := stackdriverlog.NewConfig("")
-	cfg.ContextLogOut, cfg.RequestLogOut = ioutil.Discard, ioutil.Discard
-	mw := logging.WithLogger(cfg)
-
+func TestQuery(t *testing.T) {
 	cases := []struct {
 		name       string
 		statusCode int
@@ -94,16 +86,11 @@ func TestStart(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			w, err := New(
-				aggr.authorizer,
-				es,
-			)
-			if err != nil {
-				t.Fatal(err)
+			w := &Web{
+				authorizer: aggr.authorizer,
+				es:         es,
 			}
-			mux := httptreemux.New()
-			w.Routes()(mux)
-			srv := httptest.NewServer(mw(mux))
+			srv := httptest.NewServer(w.handler())
 			defer srv.Close()
 
 			buf := new(bytes.Buffer)

@@ -5,8 +5,13 @@ import (
 	"net/http"
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
+	"github.com/99designs/gqlgen/graphql"
+	"github.com/aereal/merge-chance-time/app/adapter/githubapps"
+	"github.com/aereal/merge-chance-time/app/authz"
 	"github.com/aereal/merge-chance-time/app/config"
+	"github.com/aereal/merge-chance-time/authflow"
 	"github.com/aereal/merge-chance-time/logging"
+	"github.com/aereal/merge-chance-time/usecase"
 	"github.com/dimfeld/httptreemux/v5"
 	"github.com/rs/cors"
 	stackdriverlog "github.com/yfuruyama/stackdriver-request-context-log"
@@ -15,20 +20,30 @@ import (
 
 type Handler func(router *httptreemux.TreeMux)
 
-func New(onGAE bool, cfg *config.Config, handlers ...Handler) *Web {
+func New(onGAE bool, cfg *config.Config, ghAdapter githubapps.GitHubAppsAdapter, uc usecase.Usecase, af authflow.GitHubAuthFlow, authorizer authz.Authorizer, es graphql.ExecutableSchema) *Web {
 	return &Web{
-		onGAE:       onGAE,
-		projectID:   cfg.GCPProjectID,
-		handlers:    handlers,
-		adminOrigin: cfg.AdminOrigin.String(),
+		onGAE:               onGAE,
+		projectID:           cfg.GCPProjectID,
+		adminOrigin:         cfg.AdminOrigin.String(),
+		githubWebhookSecret: cfg.GitHubAppConfig.WebhookSecret,
+		ghAdapter:           ghAdapter,
+		usecase:             uc,
+		githubAuthFlow:      af,
+		authorizer:          authorizer,
+		es:                  es,
 	}
 }
 
 type Web struct {
-	onGAE       bool
-	projectID   string
-	handlers    []Handler
-	adminOrigin string
+	onGAE               bool
+	projectID           string
+	adminOrigin         string
+	githubWebhookSecret []byte
+	ghAdapter           githubapps.GitHubAppsAdapter
+	usecase             usecase.Usecase
+	githubAuthFlow      authflow.GitHubAuthFlow
+	authorizer          authz.Authorizer
+	es                  graphql.ExecutableSchema
 }
 
 func (w *Web) Server(port string) *http.Server {
@@ -71,9 +86,21 @@ func (w *Web) handler() http.Handler {
 	router.UseHandler(mw.Handler)
 	router.UseHandler(withDefaultHeaders)
 	router.UsingContext().Handler(http.MethodGet, "/", http.HandlerFunc(handleRoot))
-	for _, h := range w.handlers {
-		h(router)
-	}
+
+	group := router.UsingContext().NewContextGroup("/app")
+	group.POST("/webhook", w.handleWebhook())
+	group.POST("/cron", w.handleCron())
+
+	auth := router.UsingContext().NewContextGroup("/auth")
+	auth.GET("/start", w.handleGetAuthStart())
+	auth.GET("/callback", w.handleGetAuthCallback())
+
+	srv := w.newHandler()
+	apiGroup := router.UsingContext().NewContextGroup("/api")
+	apiGroup.UseHandler(w.authorizer.Middleware())
+	apiGroup.Handler(http.MethodOptions, "/query", srv)
+	apiGroup.Handler(http.MethodPost, "/query", srv)
+
 	return router
 }
 
