@@ -12,12 +12,12 @@ const InterpolateHtmlPlugin = require("react-dev-utils/InterpolateHtmlPlugin")
 const WorkboxWebpackPlugin = require("workbox-webpack-plugin")
 const WatchMissingNodeModulesPlugin = require("react-dev-utils/WatchMissingNodeModulesPlugin")
 const ModuleScopePlugin = require("react-dev-utils/ModuleScopePlugin")
-const paths = require("./paths")
-const modules = require("./modules")
-const getClientEnvironment = require("./env")
 const ModuleNotFoundPlugin = require("react-dev-utils/ModuleNotFoundPlugin")
 const ForkTsCheckerWebpackPlugin = require("react-dev-utils/ForkTsCheckerWebpackPlugin")
 const typescriptFormatter = require("react-dev-utils/typescriptFormatter")
+const paths = require("./paths")
+const modules = require("./modules")
+const getClientEnvironment = require("./env")
 
 const appPackageJson = require(paths.appPackageJson)
 
@@ -403,9 +403,8 @@ module.exports = function (webpackEnv) {
         new WorkboxWebpackPlugin.GenerateSW({
           clientsClaim: true,
           exclude: [/\.map$/, /asset-manifest\.json$/],
-          importWorkboxFrom: "cdn",
           navigateFallback: paths.publicUrlOrPath + "index.html",
-          navigateFallbackBlacklist: [
+          navigateFallbackDenylist: [
             // Exclude URLs starting with /_, as they're likely an API call
             new RegExp("^/_"),
             // Exclude any URLs whose last part seems to be a file extension
