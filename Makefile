@@ -16,7 +16,7 @@ app.yaml: app.base.json
 		--arg GH_APP_CLIENT_ID "$(GH_APP_CLIENT_ID)" \
 		--arg GH_APP_CLIENT_SECRET "$(GH_APP_CLIENT_SECRET)" \
 		--arg ADMIN_ORIGIN "$(ADMIN_ORIGIN)" \
-		'.env_variables.GH_APP_IDENTIFIER = $$GH_APP_IDENTIFIER | .env_variables.GH_APP_CLIENT_ID = $$GH_APP_CLIENT_ID | .env_variables.GH_APP_CLIENT_SECRET = $$GH_APP_CLIENT_SECRET | .env_variables.ADMIN_ORIGIN = $$ADMIN_ORIGIN' \
+		'.env_variables += { $$GH_APP_IDENTIFIER, $$GH_APP_CLIENT_ID, $$GH_APP_CLIENT_SECRET, $$ADMIN_ORIGIN }' \
 	> app.yaml
 
 deploy: app.yaml
