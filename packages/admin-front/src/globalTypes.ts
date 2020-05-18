@@ -24,6 +24,7 @@ export interface MergeChanceSchedulesToUpdate {
 
 export interface RepositoryConfigToUpdate {
   readonly schedules: MergeChanceSchedulesToUpdate;
+  readonly mergeAvailable: boolean;
 }
 
 //==============================================================

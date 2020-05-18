@@ -3,6 +3,13 @@ import makeStyles from "@material-ui/core/styles/makeStyles"
 import gql from "graphql-tag"
 import { useMutation } from "@apollo/react-hooks"
 import { GraphQLError } from "graphql"
+import FormControlLabel from "@material-ui/core/FormControlLabel"
+import Switch from "@material-ui/core/Switch"
+import ExpansionPanel from "@material-ui/core/ExpansionPanel"
+import ExpansionPanelDetails from "@material-ui/core/ExpansionPanelDetails"
+import ExpansionPanelSummary from "@material-ui/core/ExpansionPanelSummary"
+import Typography from "@material-ui/core/Typography"
+import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
 import { useFetchState } from "../effects/fetch-state"
 import { MergeChanceSchedulesToUpdate, MergeChanceScheduleToUpdate } from "../globalTypes"
 import {
@@ -61,9 +68,13 @@ export const RepoDetail: FC<RepoDetailProps> = ({ repo }) => {
       saturday: null,
     }
   )
+  const [mergeAvailable, setMergeAvailable] = useState(repo.config?.mergeAvailable ?? false)
   const { fetchState, start, succeed, fail, ready } = useFetchState()
   const [doUpdate] = useMutation<UpdateRepoConfig, UpdateRepoConfigVariables>(UPDATE_REPO_CONFIG)
 
+  const handleMergeAvailabilityChanged = (): void => {
+    setMergeAvailable((prev) => !prev)
+  }
   const handleChanged = (updated: Schedules): void => {
     setSchedules(updated)
   }
@@ -78,6 +89,7 @@ export const RepoDetail: FC<RepoDetailProps> = ({ repo }) => {
           name: repo.name,
           config: {
             schedules: toInput(schedules),
+            mergeAvailable,
           },
         },
       })
@@ -103,6 +115,17 @@ export const RepoDetail: FC<RepoDetailProps> = ({ repo }) => {
     <>
       <form noValidate onSubmit={handleSubmit}>
         <ScheduleRange schedules={schedules} onChanged={handleChanged} />
+        <ExpansionPanel>
+          <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography>Extended actions</Typography>
+          </ExpansionPanelSummary>
+          <ExpansionPanelDetails>
+            <FormControlLabel
+              label="Merge Availability"
+              control={<Switch color="primary" checked={mergeAvailable} onChange={handleMergeAvailabilityChanged} />}
+            />
+          </ExpansionPanelDetails>
+        </ExpansionPanel>
         <div className={classes.actions}>
           <PrimaryButton disabled={fetchState.kind === "started"} type="submit">
             Save
