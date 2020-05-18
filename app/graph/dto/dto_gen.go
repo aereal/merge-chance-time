@@ -38,5 +38,6 @@ type RepositoryConfig struct {
 }
 
 type RepositoryConfigToUpdate struct {
-	Schedules *MergeChanceSchedulesToUpdate `json:"schedules"`
+	Schedules      *MergeChanceSchedulesToUpdate `json:"schedules"`
+	MergeAvailable bool                          `json:"mergeAvailable"`
 }

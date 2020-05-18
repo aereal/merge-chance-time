@@ -55,6 +55,7 @@ type MergeChanceSchedule {
 
 input RepositoryConfigToUpdate {
   schedules: MergeChanceSchedulesToUpdate!
+  mergeAvailable: Boolean!
 }
 
 input MergeChanceSchedulesToUpdate {
