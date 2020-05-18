@@ -22,7 +22,9 @@ func New(ghClient githubapi.Client) (Service, error) {
 }
 
 type Service interface {
+	ApproveRepository(ctx context.Context, owner, name string) error
 	ApprovePullRequest(ctx context.Context, pr *github.PullRequest) error
+	PendingRepository(ctx context.Context, owner, name string) error
 	PendingPullRequest(ctx context.Context, pr *github.PullRequest) error
 }
 
@@ -30,8 +32,34 @@ type serviceImpl struct {
 	ghClient githubapi.Client
 }
 
+func (s *serviceImpl) ApproveRepository(ctx context.Context, owner, name string) error {
+	prs, _, err := s.ghClient.PullRequests().List(ctx, owner, name, nil)
+	if err != nil {
+		return fmt.Errorf("failed to fetch pull requests on %s/%s: %w", owner, name, err)
+	}
+	for _, pr := range prs {
+		if err := s.ApprovePullRequest(ctx, pr); err != nil {
+			return fmt.Errorf("failed to approve pull request %s/%s#%d: %w", owner, name, pr.GetNumber(), err)
+		}
+	}
+	return nil
+}
+
 func (s *serviceImpl) ApprovePullRequest(ctx context.Context, pr *github.PullRequest) error {
 	return s.createCommitStatus(ctx, pr, "success")
+}
+
+func (s *serviceImpl) PendingRepository(ctx context.Context, owner, name string) error {
+	prs, _, err := s.ghClient.PullRequests().List(ctx, owner, name, nil)
+	if err != nil {
+		return fmt.Errorf("failed to fetch pull requests on %s/%s: %w", owner, name, err)
+	}
+	for _, pr := range prs {
+		if err := s.PendingPullRequest(ctx, pr); err != nil {
+			return fmt.Errorf("failed to pending pull request %s/%s#%d: %w", owner, name, pr.GetNumber(), err)
+		}
+	}
+	return nil
 }
 
 func (s *serviceImpl) PendingPullRequest(ctx context.Context, pr *github.PullRequest) error {

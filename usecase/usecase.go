@@ -149,7 +149,7 @@ func (u *usecaseImpl) UpdateChanceTime(ctx context.Context, adapter githubapps.G
 				toBeUpdated = append(toBeUpdated, config)
 
 				g.Go(func() error {
-					return updateCommitStatuses(c, installClient, config, srv, true)
+					return srv.ApproveRepository(ctx, config.Owner, config.Name)
 				})
 			}
 			if config.ShouldStopOn(baseTime) {
@@ -157,7 +157,7 @@ func (u *usecaseImpl) UpdateChanceTime(ctx context.Context, adapter githubapps.G
 				toBeUpdated = append(toBeUpdated, config)
 
 				g.Go(func() error {
-					return updateCommitStatuses(c, installClient, config, srv, false)
+					return srv.PendingRepository(ctx, config.Owner, config.Name)
 				})
 			}
 		}
@@ -196,23 +196,4 @@ func (u *usecaseImpl) UpdatePullRequestCommitStatus(ctx context.Context, client 
 	}
 
 	return srv.PendingPullRequest(ctx, pr)
-}
-
-func updateCommitStatuses(ctx context.Context, installClient githubapi.Client, cfg *model.RepositoryConfig, srv service.Service, approve bool) error {
-	prs, _, err := installClient.PullRequests().List(ctx, cfg.Owner, cfg.Name, nil)
-	if err != nil {
-		return fmt.Errorf("failed to fetch pull requests on %s/%s: %w", cfg.Owner, cfg.Name, err)
-	}
-	for _, pr := range prs {
-		if approve {
-			if err := srv.ApprovePullRequest(ctx, pr); err != nil {
-				return err
-			}
-		} else {
-			if err := srv.PendingPullRequest(ctx, pr); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
