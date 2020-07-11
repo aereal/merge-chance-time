@@ -20,7 +20,7 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/vektah/gqlparser/v2 v2.0.1
 	github.com/yfuruyama/stackdriver-request-context-log v0.0.1
-	go.opencensus.io v0.22.3
+	go.opencensus.io v0.22.4
 	golang.org/x/crypto v0.0.0-20200429183012-4b2356b1ed79 // indirect
 	golang.org/x/net v0.0.0-20200505041828-1ed23360d12c // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
