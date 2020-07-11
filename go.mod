@@ -5,7 +5,7 @@ go 1.14
 require (
 	cloud.google.com/go/firestore v1.2.0
 	cloud.google.com/go/storage v1.7.0 // indirect
-	contrib.go.opencensus.io/exporter/stackdriver v0.13.1
+	contrib.go.opencensus.io/exporter/stackdriver v0.13.2
 	github.com/99designs/gqlgen v0.11.3
 	github.com/aereal/gqlgen-tracer-opencensus v0.0.0-20200421081317-9c381aa32808
 	github.com/aws/aws-sdk-go v1.30.21 // indirect
@@ -20,7 +20,7 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/vektah/gqlparser/v2 v2.0.1
 	github.com/yfuruyama/stackdriver-request-context-log v0.0.1
-	go.opencensus.io v0.22.3
+	go.opencensus.io v0.22.4
 	golang.org/x/crypto v0.0.0-20200429183012-4b2356b1ed79 // indirect
 	golang.org/x/net v0.0.0-20200505041828-1ed23360d12c // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
