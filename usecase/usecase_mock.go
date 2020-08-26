@@ -6,13 +6,12 @@ package usecase
 
 import (
 	context "context"
-	reflect "reflect"
-	time "time"
-
 	githubapi "github.com/aereal/merge-chance-time/app/adapter/githubapi"
 	githubapps "github.com/aereal/merge-chance-time/app/adapter/githubapps"
 	gomock "github.com/golang/mock/gomock"
 	github "github.com/google/go-github/v30/github"
+	reflect "reflect"
+	time "time"
 )
 
 // MockUsecase is a mock of Usecase interface

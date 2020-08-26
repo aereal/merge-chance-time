@@ -49,7 +49,7 @@ func (r *mutationResolver) UpdateRepositoryConfig(ctx context.Context, owner str
 		{
 			Owner:          owner,
 			Name:           name,
-			MergeAvailable: current.MergeAvailable,
+			MergeAvailable: config.MergeAvailable,
 			Schedules:      schedules,
 		},
 	}

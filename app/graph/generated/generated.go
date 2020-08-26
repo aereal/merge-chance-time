@@ -442,6 +442,7 @@ type MergeChanceSchedule {
 
 input RepositoryConfigToUpdate {
   schedules: MergeChanceSchedulesToUpdate!
+  mergeAvailable: Boolean!
 }
 
 input MergeChanceSchedulesToUpdate {
@@ -2620,6 +2621,12 @@ func (ec *executionContext) unmarshalInputRepositoryConfigToUpdate(ctx context.C
 		case "schedules":
 			var err error
 			it.Schedules, err = ec.unmarshalNMergeChanceSchedulesToUpdate2ᚖgithubᚗcomᚋaerealᚋmergeᚑchanceᚑtimeᚋappᚋgraphᚋdtoᚐMergeChanceSchedulesToUpdate(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "mergeAvailable":
+			var err error
+			it.MergeAvailable, err = ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}

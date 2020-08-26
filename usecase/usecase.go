@@ -139,7 +139,7 @@ func (u *usecaseImpl) UpdateChanceTime(ctx context.Context, adapter githubapps.G
 				return fmt.Errorf("no installation found on %s", config.Owner)
 			}
 			installClient := adapter.NewInstallationClient(install.GetID())
-			srv, err := service.New()
+			srv, err := service.New(installClient)
 			if err != nil {
 				return err
 			}
@@ -149,7 +149,7 @@ func (u *usecaseImpl) UpdateChanceTime(ctx context.Context, adapter githubapps.G
 				toBeUpdated = append(toBeUpdated, config)
 
 				g.Go(func() error {
-					return updateCommitStatuses(c, installClient, install, config, srv, true)
+					return srv.ApproveRepository(ctx, config.Owner, config.Name)
 				})
 			}
 			if config.ShouldStopOn(baseTime) {
@@ -157,7 +157,7 @@ func (u *usecaseImpl) UpdateChanceTime(ctx context.Context, adapter githubapps.G
 				toBeUpdated = append(toBeUpdated, config)
 
 				g.Go(func() error {
-					return updateCommitStatuses(c, installClient, install, config, srv, false)
+					return srv.PendingRepository(ctx, config.Owner, config.Name)
 				})
 			}
 		}
@@ -187,32 +187,13 @@ func (u *usecaseImpl) UpdatePullRequestCommitStatus(ctx context.Context, client 
 		return nil
 	}
 
-	srv, err := service.New()
+	srv, err := service.New(client)
 	if err != nil {
 		return err
 	}
 	if config.MergeAvailable {
-		return srv.ApprovePullRequest(ctx, client, pr)
+		return srv.ApprovePullRequest(ctx, pr)
 	}
 
-	return srv.PendingPullRequest(ctx, client, pr)
-}
-
-func updateCommitStatuses(ctx context.Context, installClient githubapi.Client, install *github.Installation, cfg *model.RepositoryConfig, srv service.Service, approve bool) error {
-	prs, _, err := installClient.PullRequests().List(ctx, cfg.Owner, cfg.Name, nil)
-	if err != nil {
-		return fmt.Errorf("failed to fetch pull requests on %s/%s: %w", cfg.Owner, cfg.Name, err)
-	}
-	for _, pr := range prs {
-		if approve {
-			if err := srv.ApprovePullRequest(ctx, installClient, pr); err != nil {
-				return err
-			}
-		} else {
-			if err := srv.PendingPullRequest(ctx, installClient, pr); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	return srv.PendingPullRequest(ctx, pr)
 }
