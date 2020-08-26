@@ -5,7 +5,7 @@ go 1.14
 require (
 	cloud.google.com/go/firestore v1.2.0
 	cloud.google.com/go/storage v1.7.0 // indirect
-	contrib.go.opencensus.io/exporter/stackdriver v0.13.2
+	contrib.go.opencensus.io/exporter/stackdriver v0.13.4
 	github.com/99designs/gqlgen v0.11.3
 	github.com/aereal/gqlgen-tracer-opencensus v0.0.0-20200421081317-9c381aa32808
 	github.com/aws/aws-sdk-go v1.30.21 // indirect
