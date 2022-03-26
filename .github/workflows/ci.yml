@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: setup gcloud
-        uses: GoogleCloudPlatform/github-actions/setup-gcloud@8958ac65db5da419b56f4ffbefc673774ba1434e
+        uses: GoogleCloudPlatform/github-actions/setup-gcloud@1b47649e585c2bc0808838cec476c8ab6d84f963
         with:
           service_account_key: ${{ secrets.GCLOUD_AUTH }}
           version: '272.0.0'
